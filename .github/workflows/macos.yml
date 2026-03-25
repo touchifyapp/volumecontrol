@@ -65,23 +65,18 @@ jobs:
           -- -D warnings
 
       # ── volumecontrol wrapper ────────────────────────────────────────────────
+      # The wrapper has no user-visible features; the platform backend is
+      # selected and enabled automatically.
 
-      - name: cargo check volumecontrol (no features)
+      - name: cargo check volumecontrol
         run: cargo check -p volumecontrol --target ${{ matrix.target }}
 
-      - name: cargo check volumecontrol (coreaudio feature)
-        run: cargo check -p volumecontrol --features coreaudio --target ${{ matrix.target }}
-
-      - name: cargo test volumecontrol (no features)
+      - name: cargo test volumecontrol
         run: cargo test -p volumecontrol --target ${{ matrix.target }}
 
-      - name: cargo test volumecontrol (coreaudio feature)
-        run: cargo test -p volumecontrol --features coreaudio --target ${{ matrix.target }}
-
-      - name: cargo clippy volumecontrol (coreaudio feature)
+      - name: cargo clippy volumecontrol
         run: >
           cargo clippy -p volumecontrol
-          --features coreaudio
           --target ${{ matrix.target }}
           --all-targets
           -- -D warnings

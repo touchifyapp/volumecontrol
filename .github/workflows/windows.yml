@@ -140,35 +140,29 @@ jobs:
           -- -D warnings
 
       # ── volumecontrol wrapper ────────────────────────────────────────────────
+      # The wrapper has no user-visible features; the platform backend is
+      # selected and enabled automatically.
 
-      - name: Check volumecontrol (no feature)
+      - name: Check volumecontrol
         run: cargo check -p volumecontrol --target ${{ matrix.target }}
 
-      - name: Check volumecontrol (wasapi feature)
-        run: cargo check -p volumecontrol --features wasapi --target ${{ matrix.target }}
-
-      - name: Build volumecontrol (no feature)
+      - name: Build volumecontrol
         run: cargo build -p volumecontrol --target ${{ matrix.target }}
 
-      - name: Build volumecontrol (wasapi feature)
-        run: cargo build -p volumecontrol --features wasapi --target ${{ matrix.target }}
-
-      - name: Test volumecontrol (no feature)
+      # Run integration tests on x64 only (virtual audio device installed).
+      - name: Test volumecontrol
+        if: matrix.virtual_audio
         run: cargo test -p volumecontrol --target ${{ matrix.target }}
 
-      - name: Test volumecontrol (wasapi feature)
-        if: matrix.virtual_audio
-        run: cargo test -p volumecontrol --features wasapi --target ${{ matrix.target }}
-
-      - name: Build tests volumecontrol (wasapi feature, no execute)
+      # On i686 and ARM64 only build the test binary; skip execution.
+      - name: Build tests volumecontrol (no execute)
         if: "!matrix.virtual_audio"
-        run: cargo test -p volumecontrol --features wasapi --target ${{ matrix.target }} --no-run
+        run: cargo test -p volumecontrol --target ${{ matrix.target }} --no-run
 
       - name: Clippy volumecontrol
         run: >
           cargo clippy
           -p volumecontrol
           --all-targets
-          --all-features
           --target ${{ matrix.target }}
           -- -D warnings

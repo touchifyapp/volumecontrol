@@ -131,39 +131,24 @@ jobs:
         run: cargo test -p volumecontrol-linux --features pulseaudio -- --test-threads=1
 
       # ── volumecontrol wrapper ────────────────────────────────────────────────
+      # The wrapper has no user-visible features; the platform backend is
+      # selected and enabled automatically.
 
-      - name: cargo clippy volumecontrol (no features)
+      - name: cargo clippy volumecontrol
         run: >
           cargo clippy
           -p volumecontrol
           --all-targets
           -- -D warnings
 
-      - name: cargo clippy volumecontrol (pulseaudio feature)
-        run: >
-          cargo clippy
-          -p volumecontrol
-          --features pulseaudio
-          --all-targets
-          -- -D warnings
-
-      - name: cargo check volumecontrol (no features)
+      - name: cargo check volumecontrol
         run: cargo check -p volumecontrol
 
-      - name: cargo check volumecontrol (pulseaudio feature)
-        run: cargo check -p volumecontrol --features pulseaudio
-
-      - name: cargo build volumecontrol (no features)
+      - name: cargo build volumecontrol
         run: cargo build -p volumecontrol
 
-      - name: cargo build volumecontrol (pulseaudio feature)
-        run: cargo build -p volumecontrol --features pulseaudio
-
-      - name: cargo test volumecontrol (no features)
-        run: cargo test -p volumecontrol
-
-      - name: cargo test volumecontrol (pulseaudio feature)
-        run: cargo test -p volumecontrol --features pulseaudio -- --test-threads=1
+      - name: cargo test volumecontrol
+        run: cargo test -p volumecontrol -- --test-threads=1
 
   # ── Cross-compilation with `cross` ────────────────────────────────────────────
   #
@@ -245,31 +230,18 @@ jobs:
           --features pulseaudio
 
       # ── volumecontrol wrapper ────────────────────────────────────────────────
+      # The wrapper has no user-visible features; the platform backend is
+      # selected and enabled automatically.
 
-      - name: cross check volumecontrol (no features)
+      - name: cross check volumecontrol
         run: >
           cross check
           -p volumecontrol
           --target ${{ matrix.target }}
 
-      - name: cross check volumecontrol (pulseaudio feature)
-        run: >
-          cross check
-          -p volumecontrol
-          --target ${{ matrix.target }}
-          --features pulseaudio
-
-      - name: cross build volumecontrol (no features)
+      - name: cross build volumecontrol
         if: matrix.can_build
         run: >
           cross build
           -p volumecontrol
           --target ${{ matrix.target }}
-
-      - name: cross build volumecontrol (pulseaudio feature)
-        if: matrix.can_build
-        run: >
-          cross build
-          -p volumecontrol
-          --target ${{ matrix.target }}
-          --features pulseaudio
