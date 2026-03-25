@@ -38,6 +38,7 @@ jobs:
 
       # Install the Virtual Audio Driver on platforms where a signed release is
       # available (x64 / i386).  This gives WASAPI tests a real audio endpoint.
+      # Uses nefcon to install the driver silently after trusting its certificate.
       - name: Install Virtual Audio Driver
         if: matrix.virtual_audio
         shell: powershell
@@ -48,7 +49,25 @@ jobs:
             -Uri "https://github.com/VirtualDrivers/Virtual-Audio-Driver/releases/download/25.7.14/Virtual.Audio.Driver.Signed.-.25.7.14.zip" `
             -OutFile $zip
           Expand-Archive -Path $zip -DestinationPath $dir
-          pnputil /add-driver "$dir\Virtual Audio Driver\VirtualAudioDriver.inf" /install
+
+          # Trust the driver's signing certificate to avoid install prompts.
+          $signature = Get-AuthenticodeSignature "$dir\Virtual Audio Driver\virtualaudiodriver.cat"
+          $store = Get-Item -Path Cert:\LocalMachine\TrustedPublisher
+          $store.Open("ReadWrite")
+          $store.Add($signature.SignerCertificate)
+          $store.Close()
+
+          # Install nefcon (silent device/driver installer).
+          winget install --id nefarius.nefcon --exact --silent --accept-package-agreements --accept-source-agreements
+
+          # Create the virtual audio device node.
+          nefconc --create-device-node `
+            --hardware-id root\virtualaudiodriver `
+            --class-name MEDIA `
+            --class-guid 4d36e96c-e325-11ce-bfc1-08002be10318
+
+          # Install the virtual audio driver.
+          nefconc --install-driver --inf-path "$dir\Virtual Audio Driver\VirtualAudioDriver.inf"
 
       # Check that the crate compiles without the wasapi feature (stub path).
       - name: Check (no feature)
