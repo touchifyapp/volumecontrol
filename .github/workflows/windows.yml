@@ -48,7 +48,7 @@ jobs:
             -Uri "https://github.com/VirtualDrivers/Virtual-Audio-Driver/releases/download/25.7.14/Virtual.Audio.Driver.Signed.-.25.7.14.zip" `
             -OutFile $zip
           Expand-Archive -Path $zip -DestinationPath $dir
-          pnputil /add-driver "$dir\VirtualAudioDriver.inf" /install
+          pnputil /add-driver "$dir\Virtual Audio Driver\VirtualAudioDriver.inf" /install
 
       # Check that the crate compiles without the wasapi feature (stub path).
       - name: Check (no feature)
@@ -57,6 +57,14 @@ jobs:
       # Check that the crate compiles with the real WASAPI backend enabled.
       - name: Check (wasapi feature)
         run: cargo check -p volumecontrol-windows --features wasapi --target ${{ matrix.target }}
+
+      # Build the crate without the wasapi feature.
+      - name: Build (no feature)
+        run: cargo build -p volumecontrol-windows --target ${{ matrix.target }}
+
+      # Build the crate with the real WASAPI backend enabled.
+      - name: Build (wasapi feature)
+        run: cargo build -p volumecontrol-windows --features wasapi --target ${{ matrix.target }}
 
       # Run the stub-path tests (no real WASAPI calls).
       - name: Test (no feature)
