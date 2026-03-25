@@ -19,10 +19,11 @@ jobs:
             virtual_audio: true
             nefcon_arch: x64
           # 32-bit x86 (i386) — WoW64 binaries run on the x64 runner.
+          # Virtual audio driver cannot be installed reliably on x86, so
+          # WASAPI tests are build-only (same as ARM64).
           - target: i686-pc-windows-msvc
             runner: windows-latest
-            virtual_audio: true
-            nefcon_arch: x86
+            virtual_audio: false
           # ARM64 — native ARM64 runner; no virtual audio driver release
           # available for this architecture, so WASAPI tests are build-only.
           - target: aarch64-pc-windows-msvc
@@ -38,8 +39,9 @@ jobs:
         with:
           targets: ${{ matrix.target }}
 
-      # Install the Virtual Audio Driver on platforms where a signed release is
-      # available (x64 / i386).  This gives WASAPI tests a real audio endpoint.
+      # Install the Virtual Audio Driver on x64 only — the signed release cannot
+      # be reliably installed on x86 (i686) or ARM64.  This gives WASAPI tests a
+      # real audio endpoint on the x64 runner.
       # Uses nefcon (downloaded directly) to install the driver silently.
       - name: Install Virtual Audio Driver
         if: matrix.virtual_audio
@@ -100,14 +102,14 @@ jobs:
       - name: Test (no feature)
         run: cargo test -p volumecontrol-windows --target ${{ matrix.target }}
 
-      # Build and run the real WASAPI tests on platforms with a virtual audio
-      # device installed (x64 / i386).
+      # Build and run the real WASAPI tests on x64 only (virtual audio device
+      # is only installed for that target).
       - name: Test (wasapi feature)
         if: matrix.virtual_audio
         run: cargo test -p volumecontrol-windows --features wasapi --target ${{ matrix.target }}
 
-      # On ARM64 no virtual audio driver is available — only build the test
-      # binary to verify it compiles; skip execution.
+      # On i686 and ARM64 no virtual audio driver is available — only build the
+      # test binary to verify it compiles; skip execution.
       - name: Build tests (wasapi feature, no execute)
         if: "!matrix.virtual_audio"
         run: cargo test -p volumecontrol-windows --features wasapi --target ${{ matrix.target }} --no-run
