@@ -374,7 +374,8 @@ mod tests {
     #[test]
     #[cfg(feature = "wasapi")]
     fn default_device_always_found() {
-        AudioDevice::from_default().expect("from_default() failed — no default audio device on Windows");
+        AudioDevice::from_default()
+            .expect("from_default() failed — no default audio device on Windows");
     }
 
     /// `get_vol` must return a value in `0..=100`; `set_vol` to a different
