@@ -42,21 +42,45 @@ jobs:
         with:
           targets: ${{ matrix.target }}
 
-      - name: cargo check (no features)
+      # ── volumecontrol-macos ──────────────────────────────────────────────────
+
+      - name: cargo check volumecontrol-macos (no features)
         run: cargo check -p volumecontrol-macos --target ${{ matrix.target }}
 
-      - name: cargo check (coreaudio feature)
+      - name: cargo check volumecontrol-macos (coreaudio feature)
         run: cargo check -p volumecontrol-macos --features coreaudio --target ${{ matrix.target }}
 
-      - name: cargo test (no features)
+      - name: cargo test volumecontrol-macos (no features)
         run: cargo test -p volumecontrol-macos --target ${{ matrix.target }}
 
-      - name: cargo test (coreaudio feature)
+      - name: cargo test volumecontrol-macos (coreaudio feature)
         run: cargo test -p volumecontrol-macos --features coreaudio --target ${{ matrix.target }}
 
-      - name: cargo clippy (coreaudio feature)
+      - name: cargo clippy volumecontrol-macos (coreaudio feature)
         run: >
           cargo clippy -p volumecontrol-macos
+          --features coreaudio
+          --target ${{ matrix.target }}
+          --all-targets
+          -- -D warnings
+
+      # ── volumecontrol wrapper ────────────────────────────────────────────────
+
+      - name: cargo check volumecontrol (no features)
+        run: cargo check -p volumecontrol --target ${{ matrix.target }}
+
+      - name: cargo check volumecontrol (coreaudio feature)
+        run: cargo check -p volumecontrol --features coreaudio --target ${{ matrix.target }}
+
+      - name: cargo test volumecontrol (no features)
+        run: cargo test -p volumecontrol --target ${{ matrix.target }}
+
+      - name: cargo test volumecontrol (coreaudio feature)
+        run: cargo test -p volumecontrol --features coreaudio --target ${{ matrix.target }}
+
+      - name: cargo clippy volumecontrol (coreaudio feature)
+        run: >
+          cargo clippy -p volumecontrol
           --features coreaudio
           --target ${{ matrix.target }}
           --all-targets

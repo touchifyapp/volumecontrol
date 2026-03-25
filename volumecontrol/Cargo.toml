@@ -6,6 +6,17 @@ edition.workspace = true
 license.workspace = true
 repository.workspace = true
 
+[features]
+# Enable real PulseAudio integration on Linux.
+# Requires `libpulse-dev` to be installed on the build host.
+pulseaudio = ["volumecontrol-linux/pulseaudio"]
+
+# Enable real WASAPI integration on Windows.
+wasapi = ["volumecontrol-windows/wasapi"]
+
+# Enable real CoreAudio integration on macOS.
+coreaudio = ["volumecontrol-macos/coreaudio"]
+
 [dependencies]
 volumecontrol-core = { workspace = true }
 
