@@ -126,6 +126,16 @@ impl AudioDevice {
     pub fn set_mute(&self, muted: bool) -> Result<(), AudioError> {
         self.0.set_mute(muted)
     }
+
+    /// Returns the unique identifier for this device.
+    pub fn id(&self) -> &str {
+        self.0.id()
+    }
+
+    /// Returns the human-readable name of this device.
+    pub fn name(&self) -> &str {
+        self.0.name()
+    }
 }
 
 // ── Tests ────────────────────────────────────────────────────────────────────
@@ -148,6 +158,14 @@ mod tests {
 
     // A bogus device name guaranteed not to match any real audio device.
     const BOGUS_NAME: &str = "zzz-volumecontrol-test-nonexistent-device-name";
+
+    /// The default device must have a non-empty id and name.
+    #[test]
+    fn default_device_id_and_name_nonempty() {
+        let device = AudioDevice::default().expect("default()");
+        assert!(!device.id().is_empty(), "device id must not be empty");
+        assert!(!device.name().is_empty(), "device name must not be empty");
+    }
 
     /// The default device must be resolvable when an audio device is present.
     #[test]
