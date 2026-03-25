@@ -124,35 +124,31 @@ mod tests {
     use super::*;
     use volumecontrol_core::AudioDevice as AudioDeviceTrait;
 
+    #[cfg(not(feature = "pulseaudio"))]
     #[test]
     fn default_returns_unsupported_without_feature() {
         let result = AudioDevice::default();
-        assert!(result.is_err());
-        #[cfg(not(feature = "pulseaudio"))]
         assert!(matches!(result.unwrap_err(), AudioError::Unsupported));
     }
 
+    #[cfg(not(feature = "pulseaudio"))]
     #[test]
     fn from_id_returns_unsupported_without_feature() {
         let result = AudioDevice::from_id("test-id");
-        assert!(result.is_err());
-        #[cfg(not(feature = "pulseaudio"))]
         assert!(matches!(result.unwrap_err(), AudioError::Unsupported));
     }
 
+    #[cfg(not(feature = "pulseaudio"))]
     #[test]
     fn from_name_returns_unsupported_without_feature() {
         let result = AudioDevice::from_name("test-name");
-        assert!(result.is_err());
-        #[cfg(not(feature = "pulseaudio"))]
         assert!(matches!(result.unwrap_err(), AudioError::Unsupported));
     }
 
+    #[cfg(not(feature = "pulseaudio"))]
     #[test]
     fn list_returns_unsupported_without_feature() {
         let result = AudioDevice::list();
-        assert!(result.is_err());
-        #[cfg(not(feature = "pulseaudio"))]
         assert!(matches!(result.unwrap_err(), AudioError::Unsupported));
     }
 
@@ -296,5 +292,133 @@ mod tests {
             ),
             "set_vol: unexpected error variant"
         );
+    }
+
+    // ── real-world tests (pulseaudio feature, Linux only) ─────────────────────
+    //
+    // These tests exercise the actual PulseAudio stack and therefore require a
+    // running PulseAudio server with at least one available sink.  In CI a
+    // virtual null sink is provisioned before this test suite runs.
+
+    /// The default device must be resolvable when PulseAudio is running.
+    #[cfg(all(feature = "pulseaudio", target_os = "linux"))]
+    #[test]
+    fn default_returns_ok() {
+        let device = AudioDevice::default();
+        assert!(device.is_ok(), "expected Ok, got {device:?}");
+    }
+
+    /// `list()` must return at least one device, each with a non-empty id and name.
+    #[cfg(all(feature = "pulseaudio", target_os = "linux"))]
+    #[test]
+    fn list_returns_nonempty() {
+        let devices = AudioDevice::list().expect("list()");
+        assert!(
+            !devices.is_empty(),
+            "expected at least one audio device from list()"
+        );
+        for (id, name) in &devices {
+            assert!(!id.is_empty(), "device id must not be empty");
+            assert!(!name.is_empty(), "device name must not be empty");
+        }
+    }
+
+    /// Looking up the default device by its sink name must succeed and return
+    /// the same id.
+    #[cfg(all(feature = "pulseaudio", target_os = "linux"))]
+    #[test]
+    fn from_id_valid_id_returns_ok() {
+        let default_device = AudioDevice::default().expect("default()");
+        let found_device = match AudioDevice::from_id(&default_device.id) {
+            Ok(d) => d,
+            Err(e) => panic!("from_id with valid id should succeed, got {e:?}"),
+        };
+        assert_eq!(found_device.id, default_device.id);
+    }
+
+    /// A sink name that does not exist must return `DeviceNotFound`.
+    #[cfg(all(feature = "pulseaudio", target_os = "linux"))]
+    #[test]
+    fn from_id_nonexistent_returns_not_found() {
+        let result = AudioDevice::from_id("__nonexistent_sink_xyz__");
+        match result {
+            Err(AudioError::DeviceNotFound) => {}
+            other => panic!("expected DeviceNotFound, got {other:?}"),
+        }
+    }
+
+    /// A partial description substring of the default device must match.
+    #[cfg(all(feature = "pulseaudio", target_os = "linux"))]
+    #[test]
+    fn from_name_partial_match_returns_ok() {
+        let default_device = AudioDevice::default().expect("default()");
+        let partial: String = default_device.name.chars().take(3).collect();
+        let found = AudioDevice::from_name(&partial);
+        assert!(
+            found.is_ok(),
+            "from_name with partial match '{partial}' should succeed"
+        );
+    }
+
+    /// A description that matches no sink must return `DeviceNotFound`.
+    #[cfg(all(feature = "pulseaudio", target_os = "linux"))]
+    #[test]
+    fn from_name_no_match_returns_not_found() {
+        let result = AudioDevice::from_name("\x00\x01\x02");
+        match result {
+            Err(AudioError::DeviceNotFound) => {}
+            other => panic!("expected DeviceNotFound, got {other:?}"),
+        }
+    }
+
+    /// The reported volume must always be within the valid `0..=100` range.
+    #[cfg(all(feature = "pulseaudio", target_os = "linux"))]
+    #[test]
+    fn get_vol_returns_valid_range() {
+        let device = AudioDevice::default().expect("default()");
+        let vol = device.get_vol().expect("get_vol()");
+        assert!(vol <= 100, "volume must be in 0..=100, got {vol}");
+    }
+
+    /// Setting the volume to a different value must be reflected when read back.
+    ///
+    /// The original volume is restored at the end of the test so that other
+    /// tests are not affected (run with `--test-threads=1` to avoid races).
+    #[cfg(all(feature = "pulseaudio", target_os = "linux"))]
+    #[test]
+    fn set_vol_changes_volume() {
+        let device = AudioDevice::default().expect("default()");
+        let original = device.get_vol().expect("get_vol()");
+        // Choose a target value that is clearly different from the original.
+        let target: u8 = if original >= 50 { 30 } else { 70 };
+        device.set_vol(target).expect("set_vol()");
+        let after = device.get_vol().expect("get_vol() after set");
+        // Allow ±1 rounding error due to f32 ↔ u8 conversion.
+        assert!(
+            after.abs_diff(target) <= 1,
+            "expected volume near {target}, got {after}"
+        );
+        // Restore the original volume.
+        device.set_vol(original).expect("restore original volume");
+    }
+
+    /// Toggling the mute state must be reflected when read back.
+    ///
+    /// The original mute state is restored at the end of the test so that
+    /// other tests are not affected (run with `--test-threads=1` to avoid races).
+    #[cfg(all(feature = "pulseaudio", target_os = "linux"))]
+    #[test]
+    fn set_mute_changes_mute_state() {
+        let device = AudioDevice::default().expect("default()");
+        let original = device.is_mute().expect("is_mute()");
+        // Toggle to the opposite state.
+        let target = !original;
+        device.set_mute(target).expect("set_mute()");
+        let after = device.is_mute().expect("is_mute() after set");
+        assert_eq!(after, target, "mute state should be {target}, got {after}");
+        // Restore the original mute state.
+        device
+            .set_mute(original)
+            .expect("restore original mute state");
     }
 }
