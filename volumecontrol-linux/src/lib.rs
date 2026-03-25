@@ -124,35 +124,31 @@ mod tests {
     use super::*;
     use volumecontrol_core::AudioDevice as AudioDeviceTrait;
 
+    #[cfg(not(feature = "pulseaudio"))]
     #[test]
     fn default_returns_unsupported_without_feature() {
         let result = AudioDevice::default();
-        assert!(result.is_err());
-        #[cfg(not(feature = "pulseaudio"))]
         assert!(matches!(result.unwrap_err(), AudioError::Unsupported));
     }
 
+    #[cfg(not(feature = "pulseaudio"))]
     #[test]
     fn from_id_returns_unsupported_without_feature() {
         let result = AudioDevice::from_id("test-id");
-        assert!(result.is_err());
-        #[cfg(not(feature = "pulseaudio"))]
         assert!(matches!(result.unwrap_err(), AudioError::Unsupported));
     }
 
+    #[cfg(not(feature = "pulseaudio"))]
     #[test]
     fn from_name_returns_unsupported_without_feature() {
         let result = AudioDevice::from_name("test-name");
-        assert!(result.is_err());
-        #[cfg(not(feature = "pulseaudio"))]
         assert!(matches!(result.unwrap_err(), AudioError::Unsupported));
     }
 
+    #[cfg(not(feature = "pulseaudio"))]
     #[test]
     fn list_returns_unsupported_without_feature() {
         let result = AudioDevice::list();
-        assert!(result.is_err());
-        #[cfg(not(feature = "pulseaudio"))]
         assert!(matches!(result.unwrap_err(), AudioError::Unsupported));
     }
 
