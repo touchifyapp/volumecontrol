@@ -1,0 +1,24 @@
+[package]
+name = "volumecontrol-windows"
+description = "Windows (WASAPI) volume control bindings for volumecontrol"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+volumecontrol-core = { workspace = true }
+
+# Enabled by the `wasapi` feature; only meaningful when targeting Windows.
+[dependencies.windows]
+version = "0.62"
+optional = true
+features = [
+    "Win32_Media_Audio",
+    "Win32_System_Com",
+    "Win32_Foundation",
+]
+
+[features]
+# Enable real WASAPI integration. Only useful when building for Windows.
+wasapi = ["dep:windows"]

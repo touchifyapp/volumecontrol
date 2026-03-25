@@ -1,0 +1,10 @@
+[package]
+name = "volumecontrol-core"
+description = "Common traits, errors and utilities for volumecontrol crates"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+thiserror = { workspace = true }
