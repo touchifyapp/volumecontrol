@@ -169,35 +169,138 @@ mod tests {
     use super::*;
     use volumecontrol_core::AudioDevice as AudioDeviceTrait;
 
+    // ── stub tests (no coreaudio feature) ────────────────────────────────────
+    // These tests are only compiled and run when the `coreaudio` feature is
+    // disabled; with the feature enabled the methods do real work instead of
+    // returning `Unsupported`.
+
+    #[cfg(not(feature = "coreaudio"))]
     #[test]
     fn default_returns_unsupported_without_feature() {
         let result = AudioDevice::default();
-        assert!(result.is_err());
-        #[cfg(not(feature = "coreaudio"))]
         assert!(matches!(result.unwrap_err(), AudioError::Unsupported));
     }
 
+    #[cfg(not(feature = "coreaudio"))]
     #[test]
     fn from_id_returns_unsupported_without_feature() {
         let result = AudioDevice::from_id("test-id");
-        assert!(result.is_err());
-        #[cfg(not(feature = "coreaudio"))]
         assert!(matches!(result.unwrap_err(), AudioError::Unsupported));
     }
 
+    #[cfg(not(feature = "coreaudio"))]
     #[test]
     fn from_name_returns_unsupported_without_feature() {
         let result = AudioDevice::from_name("test-name");
-        assert!(result.is_err());
-        #[cfg(not(feature = "coreaudio"))]
         assert!(matches!(result.unwrap_err(), AudioError::Unsupported));
     }
 
+    #[cfg(not(feature = "coreaudio"))]
     #[test]
     fn list_returns_unsupported_without_feature() {
         let result = AudioDevice::list();
-        assert!(result.is_err());
-        #[cfg(not(feature = "coreaudio"))]
         assert!(matches!(result.unwrap_err(), AudioError::Unsupported));
+    }
+
+    // ── real-world tests (coreaudio feature, macOS only) ─────────────────────
+    // These tests exercise the actual CoreAudio stack and therefore only run on
+    // macOS with a real audio hardware HAL available.
+
+    #[cfg(all(feature = "coreaudio", target_os = "macos"))]
+    #[test]
+    fn default_returns_ok() {
+        let device = AudioDevice::default();
+        assert!(device.is_ok(), "expected Ok, got {device:?}");
+    }
+
+    #[cfg(all(feature = "coreaudio", target_os = "macos"))]
+    #[test]
+    fn list_returns_nonempty() {
+        let devices = AudioDevice::list().expect("list()");
+        assert!(
+            !devices.is_empty(),
+            "expected at least one audio device from list()"
+        );
+        // Every entry must have a non-empty id and name.
+        for (id, name) in &devices {
+            assert!(!id.is_empty(), "device id must not be empty");
+            assert!(!name.is_empty(), "device name must not be empty");
+        }
+    }
+
+    #[cfg(all(feature = "coreaudio", target_os = "macos"))]
+    #[test]
+    fn from_id_valid_id_returns_ok() {
+        // Use the default device's id to look up via `from_id`.
+        let default_device = AudioDevice::default().expect("default()");
+        let found = AudioDevice::from_id(&default_device.id);
+        assert!(found.is_ok(), "from_id with valid id should succeed");
+        assert_eq!(found.unwrap().id, default_device.id);
+    }
+
+    #[cfg(all(feature = "coreaudio", target_os = "macos"))]
+    #[test]
+    fn from_id_invalid_id_returns_not_found() {
+        let result = AudioDevice::from_id("not-a-number");
+        assert!(
+            matches!(result.unwrap_err(), AudioError::DeviceNotFound),
+            "non-numeric id should return DeviceNotFound"
+        );
+    }
+
+    #[cfg(all(feature = "coreaudio", target_os = "macos"))]
+    #[test]
+    fn from_name_partial_match_returns_ok() {
+        // Build a partial name from the first few characters of the default
+        // device name to guarantee a match without hard-coding a device name.
+        let default_device = AudioDevice::default().expect("default()");
+        let partial: String = default_device.name.chars().take(3).collect();
+        let found = AudioDevice::from_name(&partial);
+        assert!(
+            found.is_ok(),
+            "from_name with partial match '{partial}' should succeed"
+        );
+    }
+
+    #[cfg(all(feature = "coreaudio", target_os = "macos"))]
+    #[test]
+    fn from_name_no_match_returns_not_found() {
+        let result = AudioDevice::from_name("\x00\x01\x02");
+        assert!(
+            matches!(result.unwrap_err(), AudioError::DeviceNotFound),
+            "unrecognised name should return DeviceNotFound"
+        );
+    }
+
+    #[cfg(all(feature = "coreaudio", target_os = "macos"))]
+    #[test]
+    fn get_vol_returns_valid_range() {
+        let device = AudioDevice::default().expect("default()");
+        let vol = device.get_vol().expect("get_vol()");
+        assert!(vol <= 100, "volume must be in 0..=100, got {vol}");
+    }
+
+    #[cfg(all(feature = "coreaudio", target_os = "macos"))]
+    #[test]
+    fn set_vol_roundtrip() {
+        let device = AudioDevice::default().expect("default()");
+        let original = device.get_vol().expect("get_vol()");
+        device.set_vol(original).expect("set_vol()");
+        let after = device.get_vol().expect("get_vol() after set");
+        // Allow ±1 rounding error due to f32 ↔ u8 conversion.
+        assert!(
+            original.abs_diff(after) <= 1,
+            "volume changed unexpectedly: {original} -> {after}"
+        );
+    }
+
+    #[cfg(all(feature = "coreaudio", target_os = "macos"))]
+    #[test]
+    fn set_mute_roundtrip() {
+        let device = AudioDevice::default().expect("default()");
+        let original = device.is_mute().expect("is_mute()");
+        device.set_mute(original).expect("set_mute()");
+        let after = device.is_mute().expect("is_mute() after set");
+        assert_eq!(original, after, "mute state changed unexpectedly");
     }
 }
