@@ -12,12 +12,8 @@ use volumecontrol_core::{AudioDevice as AudioDeviceTrait, AudioError};
 #[derive(Debug)]
 pub struct AudioDevice {
     /// WASAPI endpoint identifier (GUID string).
-    // Only accessed via the `wasapi` feature path; suppress dead_code on
-    // non-Windows builds.
-    #[allow(dead_code)]
     id: String,
     /// Friendly device name.
-    #[allow(dead_code)]
     name: String,
 }
 
@@ -221,6 +217,14 @@ impl AudioDeviceTrait for AudioDevice {
             let _ = muted;
             Err(AudioError::Unsupported)
         }
+    }
+
+    fn id(&self) -> &str {
+        &self.id
+    }
+
+    fn name(&self) -> &str {
+        &self.name
     }
 }
 

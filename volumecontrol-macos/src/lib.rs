@@ -24,10 +24,8 @@ use volumecontrol_core::{AudioDevice as AudioDeviceTrait, AudioError};
 #[derive(Debug)]
 pub struct AudioDevice {
     /// CoreAudio `AudioObjectID` (serialized as a string for the public API).
-    #[allow(dead_code)]
     id: String,
     /// Human-readable device name (`kAudioObjectPropertyName`).
-    #[allow(dead_code)]
     name: String,
 }
 
@@ -162,6 +160,14 @@ impl AudioDeviceTrait for AudioDevice {
             Err(AudioError::Unsupported)
         }
     }
+
+    fn id(&self) -> &str {
+        &self.id
+    }
+
+    fn name(&self) -> &str {
+        &self.name
+    }
 }
 
 #[cfg(test)]
@@ -233,9 +239,9 @@ mod tests {
     fn from_id_valid_id_returns_ok() {
         // Use the default device's id to look up via `from_id`.
         let default_device = AudioDevice::default().expect("default()");
-        let found = AudioDevice::from_id(&default_device.id);
+        let found = AudioDevice::from_id(default_device.id());
         assert!(found.is_ok(), "from_id with valid id should succeed");
-        assert_eq!(found.unwrap().id, default_device.id);
+        assert_eq!(found.unwrap().id(), default_device.id());
     }
 
     #[cfg(all(feature = "coreaudio", target_os = "macos"))]
@@ -254,7 +260,7 @@ mod tests {
         // Build a partial name from the first few characters of the default
         // device name to guarantee a match without hard-coding a device name.
         let default_device = AudioDevice::default().expect("default()");
-        let partial: String = default_device.name.chars().take(3).collect();
+        let partial: String = default_device.name().chars().take(3).collect();
         let found = AudioDevice::from_name(&partial);
         assert!(
             found.is_ok(),

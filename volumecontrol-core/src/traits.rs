@@ -64,4 +64,10 @@ pub trait AudioDevice: Sized {
     ///
     /// Returns an error if the mute state cannot be changed.
     fn set_mute(&self, muted: bool) -> Result<(), AudioError>;
+
+    /// Returns the unique identifier for this device.
+    fn id(&self) -> &str;
+
+    /// Returns the human-readable name of this device.
+    fn name(&self) -> &str;
 }

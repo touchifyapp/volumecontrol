@@ -13,10 +13,8 @@ mod pulse;
 #[derive(Debug)]
 pub struct AudioDevice {
     /// PulseAudio sink name used as the unique device identifier.
-    #[cfg_attr(not(feature = "pulseaudio"), allow(dead_code))]
     id: String,
-    /// Human-readable sink description (stored for introspection and future use).
-    #[allow(dead_code)]
+    /// Human-readable sink description.
     name: String,
 }
 
@@ -116,6 +114,14 @@ impl AudioDeviceTrait for AudioDevice {
             let _ = muted;
             Err(AudioError::Unsupported)
         }
+    }
+
+    fn id(&self) -> &str {
+        &self.id
+    }
+
+    fn name(&self) -> &str {
+        &self.name
     }
 }
 
@@ -329,11 +335,11 @@ mod tests {
     #[test]
     fn from_id_valid_id_returns_ok() {
         let default_device = AudioDevice::default().expect("default()");
-        let found_device = match AudioDevice::from_id(&default_device.id) {
+        let found_device = match AudioDevice::from_id(default_device.id()) {
             Ok(d) => d,
             Err(e) => panic!("from_id with valid id should succeed, got {e:?}"),
         };
-        assert_eq!(found_device.id, default_device.id);
+        assert_eq!(found_device.id(), default_device.id());
     }
 
     /// A sink name that does not exist must return `DeviceNotFound`.
@@ -352,7 +358,7 @@ mod tests {
     #[test]
     fn from_name_partial_match_returns_ok() {
         let default_device = AudioDevice::default().expect("default()");
-        let partial: String = default_device.name.chars().take(3).collect();
+        let partial: String = default_device.name().chars().take(3).collect();
         let found = AudioDevice::from_name(&partial);
         assert!(
             found.is_ok(),
