@@ -60,6 +60,10 @@ jobs:
           # Install nefcon (silent device/driver installer).
           winget install --id nefarius.nefcon --exact --silent --accept-package-agreements --accept-source-agreements
 
+          # Refresh PATH so nefconc is visible without starting a new shell.
+          $env:PATH = [System.Environment]::GetEnvironmentVariable("PATH", "Machine") + ";" + `
+                      [System.Environment]::GetEnvironmentVariable("PATH", "User")
+
           # Create the virtual audio device node.
           nefconc --create-device-node `
             --hardware-id root\virtualaudiodriver `
