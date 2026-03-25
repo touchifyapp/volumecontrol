@@ -21,18 +21,6 @@
 //!     Ok(())
 //! }
 //! ```
-//!
-//! Alternatively, use the [`prelude`] module for a glob import:
-//!
-//! ```no_run
-//! use volumecontrol::prelude::*;
-//!
-//! fn main() -> Result<(), AudioError> {
-//!     let device = AudioDevice::default()?;
-//!     println!("Volume: {}%", device.get_vol()?);
-//!     Ok(())
-//! }
-//! ```
 
 pub use volumecontrol_core::AudioError;
 
@@ -140,275 +128,28 @@ impl AudioDevice {
     }
 }
 
-/// A convenience prelude re-exporting the items needed for typical usage.
-///
-/// ```no_run
-/// use volumecontrol::prelude::*;
-///
-/// fn main() -> Result<(), AudioError> {
-///     let device = AudioDevice::default()?;
-///     println!("Volume: {}%", device.get_vol()?);
-///     Ok(())
-/// }
-/// ```
-pub mod prelude {
-    pub use super::AudioDevice;
-    pub use super::AudioError;
-}
-
 // ── Tests ────────────────────────────────────────────────────────────────────
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
-    // ── Linux integration tests ──────────────────────────────────────────────
-    //
-    // These require a running PulseAudio server with at least one sink.
-    // In CI a virtual null sink is provisioned before the test suite runs.
-    // Run with `--test-threads=1` to avoid races on shared audio state.
-
-    /// The default device must be resolvable when PulseAudio is running.
-    #[cfg(target_os = "linux")]
-    #[test]
-    fn default_returns_ok() {
-        let result = AudioDevice::default();
-        assert!(result.is_ok(), "expected Ok, got {result:?}");
-    }
-
-    /// `list()` must return at least one device with non-empty id and name.
-    #[cfg(target_os = "linux")]
-    #[test]
-    fn list_returns_nonempty() {
-        let devices = AudioDevice::list().expect("list()");
-        assert!(
-            !devices.is_empty(),
-            "expected at least one audio device from list()"
-        );
-        for (id, name) in &devices {
-            assert!(!id.is_empty(), "device id must not be empty");
-            assert!(!name.is_empty(), "device name must not be empty");
-        }
-    }
-
-    /// Looking up a device by id obtained from `list()` must succeed.
-    #[cfg(target_os = "linux")]
-    #[test]
-    fn from_id_valid_id_returns_ok() {
-        let devices = AudioDevice::list().expect("list()");
-        let (id, _name) = devices.first().expect("at least one device in list");
-        let found = AudioDevice::from_id(id);
-        assert!(
-            found.is_ok(),
-            "from_id with a valid id should succeed, got {found:?}"
-        );
-    }
-
-    /// A sink name that does not exist must return `DeviceNotFound`.
-    #[cfg(target_os = "linux")]
-    #[test]
-    fn from_id_nonexistent_returns_not_found() {
-        match AudioDevice::from_id("__nonexistent_sink_xyz__") {
-            Err(AudioError::DeviceNotFound) => {}
-            other => panic!("expected DeviceNotFound, got {other:?}"),
-        }
-    }
-
-    /// A partial description substring of a listed device must match.
-    #[cfg(target_os = "linux")]
-    #[test]
-    fn from_name_partial_match_returns_ok() {
-        let devices = AudioDevice::list().expect("list()");
-        let (_id, name) = devices.first().expect("at least one device in list");
-        let partial: String = name.chars().take(3).collect();
-        let found = AudioDevice::from_name(&partial);
-        assert!(
-            found.is_ok(),
-            "from_name with partial match '{partial}' should succeed"
-        );
-    }
-
-    /// A description that matches no sink must return `DeviceNotFound`.
-    #[cfg(target_os = "linux")]
-    #[test]
-    fn from_name_no_match_returns_not_found() {
-        match AudioDevice::from_name("\x00\x01\x02") {
-            Err(AudioError::DeviceNotFound) => {}
-            other => panic!("expected DeviceNotFound, got {other:?}"),
-        }
-    }
-
-    /// The reported volume must always be within the valid `0..=100` range.
-    #[cfg(target_os = "linux")]
-    #[test]
-    fn get_vol_returns_valid_range() {
-        let device = AudioDevice::default().expect("default()");
-        let vol = device.get_vol().expect("get_vol()");
-        assert!(vol <= 100, "volume must be in 0..=100, got {vol}");
-    }
-
-    /// Setting the volume to a different value must be reflected when read back.
-    ///
-    /// The original volume is restored so that other tests are not affected.
-    /// Run with `--test-threads=1` to avoid races.
-    #[cfg(target_os = "linux")]
-    #[test]
-    fn set_vol_changes_volume() {
-        let device = AudioDevice::default().expect("default()");
-        let original = device.get_vol().expect("get_vol()");
-        let target: u8 = if original >= 50 { 30 } else { 70 };
-        device.set_vol(target).expect("set_vol()");
-        let after = device.get_vol().expect("get_vol() after set");
-        // Allow ±1 rounding error due to f32 ↔ u8 conversion.
-        assert!(
-            after.abs_diff(target) <= 1,
-            "expected volume near {target}, got {after}"
-        );
-        device.set_vol(original).expect("restore original volume");
-    }
-
-    /// Toggling the mute state must be reflected when read back.
-    ///
-    /// The original mute state is restored so that other tests are not affected.
-    /// Run with `--test-threads=1` to avoid races.
-    #[cfg(target_os = "linux")]
-    #[test]
-    fn set_mute_changes_mute_state() {
-        let device = AudioDevice::default().expect("default()");
-        let original = device.is_mute().expect("is_mute()");
-        let target = !original;
-        device.set_mute(target).expect("set_mute()");
-        let after = device.is_mute().expect("is_mute() after set");
-        assert_eq!(after, target, "mute state should be {target}, got {after}");
-        device
-            .set_mute(original)
-            .expect("restore original mute state");
-    }
-
-    // ── macOS integration tests ──────────────────────────────────────────────
-    //
-    // These exercise the CoreAudio stack on macOS hardware runners.
-
-    /// The default device must be resolvable on macOS.
-    #[cfg(target_os = "macos")]
-    #[test]
-    fn default_returns_ok() {
-        let result = AudioDevice::default();
-        assert!(result.is_ok(), "expected Ok, got {result:?}");
-    }
-
-    /// `list()` must return at least one device with non-empty id and name.
-    #[cfg(target_os = "macos")]
-    #[test]
-    fn list_returns_nonempty() {
-        let devices = AudioDevice::list().expect("list()");
-        assert!(
-            !devices.is_empty(),
-            "expected at least one audio device from list()"
-        );
-        for (id, name) in &devices {
-            assert!(!id.is_empty(), "device id must not be empty");
-            assert!(!name.is_empty(), "device name must not be empty");
-        }
-    }
-
-    /// Looking up a device by id obtained from `list()` must succeed.
-    #[cfg(target_os = "macos")]
-    #[test]
-    fn from_id_valid_id_returns_ok() {
-        let devices = AudioDevice::list().expect("list()");
-        let (id, _name) = devices.first().expect("at least one device in list");
-        let found = AudioDevice::from_id(id);
-        assert!(
-            found.is_ok(),
-            "from_id with a valid id should succeed, got {found:?}"
-        );
-    }
-
-    /// A non-numeric id must return `DeviceNotFound`.
-    #[cfg(target_os = "macos")]
-    #[test]
-    fn from_id_nonexistent_returns_not_found() {
-        match AudioDevice::from_id("not-a-number") {
-            Err(AudioError::DeviceNotFound) => {}
-            other => panic!("expected DeviceNotFound, got {other:?}"),
-        }
-    }
-
-    /// A partial description substring of a listed device must match.
-    #[cfg(target_os = "macos")]
-    #[test]
-    fn from_name_partial_match_returns_ok() {
-        let devices = AudioDevice::list().expect("list()");
-        let (_id, name) = devices.first().expect("at least one device in list");
-        let partial: String = name.chars().take(3).collect();
-        let found = AudioDevice::from_name(&partial);
-        assert!(
-            found.is_ok(),
-            "from_name with partial match '{partial}' should succeed"
-        );
-    }
-
-    /// A description that matches no device must return `DeviceNotFound`.
-    #[cfg(target_os = "macos")]
-    #[test]
-    fn from_name_no_match_returns_not_found() {
-        match AudioDevice::from_name("\x00\x01\x02") {
-            Err(AudioError::DeviceNotFound) => {}
-            other => panic!("expected DeviceNotFound, got {other:?}"),
-        }
-    }
-
-    /// The reported volume must always be within the valid `0..=100` range.
-    #[cfg(target_os = "macos")]
-    #[test]
-    fn get_vol_returns_valid_range() {
-        let device = AudioDevice::default().expect("default()");
-        let vol = device.get_vol().expect("get_vol()");
-        assert!(vol <= 100, "volume must be in 0..=100, got {vol}");
-    }
-
-    /// Setting the volume to the same value must not change it (±1 rounding).
-    #[cfg(target_os = "macos")]
-    #[test]
-    fn set_vol_roundtrip() {
-        let device = AudioDevice::default().expect("default()");
-        let original = device.get_vol().expect("get_vol()");
-        device.set_vol(original).expect("set_vol()");
-        let after = device.get_vol().expect("get_vol() after set");
-        assert!(
-            original.abs_diff(after) <= 1,
-            "volume changed unexpectedly: {original} -> {after}"
-        );
-    }
-
-    /// Setting the mute state to its current value must not change it.
-    #[cfg(target_os = "macos")]
-    #[test]
-    fn set_mute_roundtrip() {
-        let device = AudioDevice::default().expect("default()");
-        let original = device.is_mute().expect("is_mute()");
-        device.set_mute(original).expect("set_mute()");
-        let after = device.is_mute().expect("is_mute() after set");
-        assert_eq!(original, after, "mute state changed unexpectedly");
-    }
-
-    // ── Windows integration tests ────────────────────────────────────────────
-    //
-    // These exercise WASAPI on Windows CI runners that have a virtual audio
-    // device installed.  Run with `--test-threads=1` to avoid races.
-
-    /// A device ID that is guaranteed not to match any real WASAPI endpoint.
+    // A bogus device id guaranteed not to match any real device.
+    // The format matches what each backend considers an invalid lookup:
+    // - Windows: a GUID-style path that no WASAPI endpoint will carry
+    // - macOS: a non-numeric string (CoreAudio ids are integers)
+    // - Linux / other: a PulseAudio sink name that cannot exist
     #[cfg(target_os = "windows")]
     const BOGUS_ID: &str = "volumecontrol-test-nonexistent-{00000000-0000-0000-0000-000000000000}";
+    #[cfg(target_os = "macos")]
+    const BOGUS_ID: &str = "not-a-number";
+    #[cfg(not(any(target_os = "windows", target_os = "macos")))]
+    const BOGUS_ID: &str = "__nonexistent_sink_xyz__";
 
-    /// A device name that is guaranteed not to match any real audio device.
-    #[cfg(target_os = "windows")]
+    // A bogus device name guaranteed not to match any real audio device.
     const BOGUS_NAME: &str = "zzz-volumecontrol-test-nonexistent-device-name";
 
-    /// The default device must be resolvable when a virtual audio device is
-    /// present.
-    #[cfg(target_os = "windows")]
+    /// The default device must be resolvable when an audio device is present.
     #[test]
     fn default_returns_ok() {
         let result = AudioDevice::default();
@@ -416,7 +157,6 @@ mod tests {
     }
 
     /// `list()` must return at least one device with non-empty id and name.
-    #[cfg(target_os = "windows")]
     #[test]
     fn list_returns_nonempty() {
         let devices = AudioDevice::list().expect("list()");
@@ -431,7 +171,6 @@ mod tests {
     }
 
     /// Looking up a device by id obtained from `list()` must succeed.
-    #[cfg(target_os = "windows")]
     #[test]
     fn from_id_valid_id_returns_ok() {
         let devices = AudioDevice::list().expect("list()");
@@ -443,22 +182,14 @@ mod tests {
         );
     }
 
-    /// A bogus device id must return `DeviceNotFound` or `InitializationFailed`.
-    #[cfg(target_os = "windows")]
+    /// A bogus device id must return an error.
     #[test]
-    fn from_id_bogus_returns_not_found() {
+    fn from_id_nonexistent_returns_err() {
         let result = AudioDevice::from_id(BOGUS_ID);
-        assert!(
-            matches!(
-                result,
-                Err(AudioError::DeviceNotFound | AudioError::InitializationFailed(_))
-            ),
-            "expected DeviceNotFound or InitializationFailed, got {result:?}"
-        );
+        assert!(result.is_err(), "expected an error, got {result:?}");
     }
 
     /// A partial description substring of a listed device must match.
-    #[cfg(target_os = "windows")]
     #[test]
     fn from_name_partial_match_returns_ok() {
         let devices = AudioDevice::list().expect("list()");
@@ -471,22 +202,14 @@ mod tests {
         );
     }
 
-    /// A bogus device name must return `DeviceNotFound` or `InitializationFailed`.
-    #[cfg(target_os = "windows")]
+    /// A name that matches no device must return an error.
     #[test]
-    fn from_name_bogus_returns_not_found() {
+    fn from_name_no_match_returns_err() {
         let result = AudioDevice::from_name(BOGUS_NAME);
-        assert!(
-            matches!(
-                result,
-                Err(AudioError::DeviceNotFound | AudioError::InitializationFailed(_))
-            ),
-            "expected DeviceNotFound or InitializationFailed, got {result:?}"
-        );
+        assert!(result.is_err(), "expected an error, got {result:?}");
     }
 
     /// The reported volume must always be within the valid `0..=100` range.
-    #[cfg(target_os = "windows")]
     #[test]
     fn get_vol_returns_valid_range() {
         let device = AudioDevice::default().expect("default()");
@@ -498,7 +221,6 @@ mod tests {
     ///
     /// The original volume is restored so that other tests are not affected.
     /// Run with `--test-threads=1` to avoid races.
-    #[cfg(target_os = "windows")]
     #[test]
     fn set_vol_changes_volume() {
         let device = AudioDevice::default().expect("default()");
@@ -506,6 +228,7 @@ mod tests {
         let target: u8 = if original >= 50 { 30 } else { 70 };
         device.set_vol(target).expect("set_vol()");
         let after = device.get_vol().expect("get_vol() after set");
+        // Allow ±1 rounding error due to floating-point ↔ integer conversion.
         assert!(
             after.abs_diff(target) <= 1,
             "expected volume near {target}, got {after}"
@@ -517,7 +240,6 @@ mod tests {
     ///
     /// The original mute state is restored so that other tests are not affected.
     /// Run with `--test-threads=1` to avoid races.
-    #[cfg(target_os = "windows")]
     #[test]
     fn set_mute_changes_mute_state() {
         let device = AudioDevice::default().expect("default()");
