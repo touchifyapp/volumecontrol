@@ -175,8 +175,9 @@ pub(crate) mod wasapi {
                 .OpenPropertyStore(STGM_READ)
                 .map_err(|e| AudioError::InitializationFailed(e.to_string()))?;
 
+            let key = PKEY_Device_FriendlyName;
             let pv = store
-                .GetValue(&raw const PKEY_Device_FriendlyName)
+                .GetValue(&raw const key)
                 .map_err(|e| AudioError::InitializationFailed(e.to_string()))?;
 
             let pwstr = PropVariantToStringAlloc(&raw const pv)
