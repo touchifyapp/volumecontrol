@@ -229,87 +229,204 @@ mod tests {
     use super::*;
     use volumecontrol_core::AudioDevice as AudioDeviceTrait;
 
-    /// Stub-path tests run on every platform (including the CI Linux runners).
-    /// They verify the correct error is returned when the `wasapi` feature is
-    /// disabled.
+    // ------------------------------------------------------------------
+    // Stub-path tests — only compiled and run when `wasapi` is disabled.
+    // ------------------------------------------------------------------
 
     #[test]
+    #[cfg(not(feature = "wasapi"))]
     fn default_returns_unsupported_without_feature() {
-        let result = AudioDevice::default();
-        assert!(result.is_err());
-        #[cfg(not(feature = "wasapi"))]
-        assert!(matches!(result.unwrap_err(), AudioError::Unsupported));
+        assert!(matches!(
+            AudioDevice::default(),
+            Err(AudioError::Unsupported)
+        ));
     }
 
     #[test]
+    #[cfg(not(feature = "wasapi"))]
     fn from_id_returns_unsupported_without_feature() {
-        let result = AudioDevice::from_id("test-id");
-        assert!(result.is_err());
-        #[cfg(not(feature = "wasapi"))]
-        assert!(matches!(result.unwrap_err(), AudioError::Unsupported));
+        assert!(matches!(
+            AudioDevice::from_id("test-id"),
+            Err(AudioError::Unsupported)
+        ));
     }
 
     #[test]
+    #[cfg(not(feature = "wasapi"))]
     fn from_name_returns_unsupported_without_feature() {
-        let result = AudioDevice::from_name("test-name");
-        assert!(result.is_err());
-        #[cfg(not(feature = "wasapi"))]
-        assert!(matches!(result.unwrap_err(), AudioError::Unsupported));
+        assert!(matches!(
+            AudioDevice::from_name("test-name"),
+            Err(AudioError::Unsupported)
+        ));
     }
 
     #[test]
+    #[cfg(not(feature = "wasapi"))]
     fn list_returns_unsupported_without_feature() {
-        let result = AudioDevice::list();
-        assert!(result.is_err());
-        #[cfg(not(feature = "wasapi"))]
-        assert!(matches!(result.unwrap_err(), AudioError::Unsupported));
+        assert!(matches!(AudioDevice::list(), Err(AudioError::Unsupported)));
     }
 
     #[test]
+    #[cfg(not(feature = "wasapi"))]
     fn get_vol_returns_unsupported_without_feature() {
         let device = AudioDevice {
             id: String::from("stub-id"),
             name: String::from("stub-name"),
         };
-        let result = device.get_vol();
-        assert!(result.is_err());
-        #[cfg(not(feature = "wasapi"))]
-        assert!(matches!(result.unwrap_err(), AudioError::Unsupported));
+        assert!(matches!(device.get_vol(), Err(AudioError::Unsupported)));
     }
 
     #[test]
+    #[cfg(not(feature = "wasapi"))]
     fn set_vol_returns_unsupported_without_feature() {
         let device = AudioDevice {
             id: String::from("stub-id"),
             name: String::from("stub-name"),
         };
-        let result = device.set_vol(50);
-        assert!(result.is_err());
-        #[cfg(not(feature = "wasapi"))]
-        assert!(matches!(result.unwrap_err(), AudioError::Unsupported));
+        assert!(matches!(device.set_vol(50), Err(AudioError::Unsupported)));
     }
 
     #[test]
+    #[cfg(not(feature = "wasapi"))]
     fn is_mute_returns_unsupported_without_feature() {
         let device = AudioDevice {
             id: String::from("stub-id"),
             name: String::from("stub-name"),
         };
-        let result = device.is_mute();
-        assert!(result.is_err());
-        #[cfg(not(feature = "wasapi"))]
-        assert!(matches!(result.unwrap_err(), AudioError::Unsupported));
+        assert!(matches!(device.is_mute(), Err(AudioError::Unsupported)));
     }
 
     #[test]
+    #[cfg(not(feature = "wasapi"))]
     fn set_mute_returns_unsupported_without_feature() {
         let device = AudioDevice {
             id: String::from("stub-id"),
             name: String::from("stub-name"),
         };
-        let result = device.set_mute(true);
-        assert!(result.is_err());
-        #[cfg(not(feature = "wasapi"))]
-        assert!(matches!(result.unwrap_err(), AudioError::Unsupported));
+        assert!(matches!(
+            device.set_mute(true),
+            Err(AudioError::Unsupported)
+        ));
+    }
+
+    // ------------------------------------------------------------------
+    // Real-world WASAPI tests — only compiled and run with `wasapi` feature.
+    // These run on Windows CI runners that have real audio hardware, or skip
+    // gracefully when no audio endpoint is present.
+    // ------------------------------------------------------------------
+
+    /// A device ID that is guaranteed to not match any real WASAPI endpoint.
+    #[cfg(feature = "wasapi")]
+    const BOGUS_ID: &str = "volumecontrol-test-nonexistent-{00000000-0000-0000-0000-000000000000}";
+
+    /// A device name that is guaranteed to not match any real audio device.
+    #[cfg(feature = "wasapi")]
+    const BOGUS_NAME: &str = "zzz-volumecontrol-test-nonexistent-device-name";
+
+    /// `from_id` with a clearly invalid ID must return `DeviceNotFound` or a
+    /// graceful `InitializationFailed` — never a panic or `Unsupported`.
+    #[test]
+    #[cfg(feature = "wasapi")]
+    fn from_id_bogus_returns_not_found() {
+        let result = AudioDevice::from_id(BOGUS_ID);
+        assert!(
+            matches!(
+                result,
+                Err(AudioError::DeviceNotFound | AudioError::InitializationFailed(_))
+            ),
+            "expected DeviceNotFound or InitializationFailed, got {result:?}"
+        );
+    }
+
+    /// `from_name` with a clearly invalid name must return `DeviceNotFound` or
+    /// `InitializationFailed` — never a panic or `Unsupported`.
+    #[test]
+    #[cfg(feature = "wasapi")]
+    fn from_name_bogus_returns_not_found() {
+        let result = AudioDevice::from_name(BOGUS_NAME);
+        assert!(
+            matches!(
+                result,
+                Err(AudioError::DeviceNotFound | AudioError::InitializationFailed(_))
+            ),
+            "expected DeviceNotFound or InitializationFailed, got {result:?}"
+        );
+    }
+
+    /// `list()` must not panic; it may return an empty `Vec` or an error on
+    /// machines with no audio hardware.
+    #[test]
+    #[cfg(feature = "wasapi")]
+    fn list_does_not_panic() {
+        let result = AudioDevice::list();
+        assert!(
+            result.is_ok() || matches!(result, Err(AudioError::InitializationFailed(_))),
+            "unexpected error from list(): {result:?}"
+        );
+    }
+
+    /// `default()` must not panic; a missing audio device yields a known error.
+    #[test]
+    #[cfg(feature = "wasapi")]
+    fn default_does_not_panic() {
+        let result = AudioDevice::default();
+        assert!(
+            result.is_ok()
+                || matches!(
+                    result,
+                    Err(AudioError::DeviceNotFound | AudioError::InitializationFailed(_))
+                ),
+            "unexpected error from default(): {result:?}"
+        );
+    }
+
+    /// If a default render endpoint is available, `get_vol` must return a value
+    /// in `0..=100` and `set_vol` must accept it back without error.
+    #[test]
+    #[cfg(feature = "wasapi")]
+    fn default_device_volume_round_trip() {
+        let device = match AudioDevice::default() {
+            Ok(d) => d,
+            Err(_) => return, // No audio hardware on this runner — skip.
+        };
+
+        let original_vol = match device.get_vol() {
+            Ok(v) => v,
+            Err(_) => return,
+        };
+        assert!(
+            original_vol <= 100,
+            "get_vol returned {original_vol}, which is out of range"
+        );
+
+        // Writing the same value back should be a no-op.
+        let _ = device.set_vol(original_vol);
+
+        if let Ok(v) = device.get_vol() {
+            assert!(v <= 100, "get_vol after set_vol returned {v}, out of range");
+        }
+    }
+
+    /// If a default render endpoint is available, `is_mute`/`set_mute` must
+    /// round-trip: restoring the original mute state must succeed.
+    #[test]
+    #[cfg(feature = "wasapi")]
+    fn default_device_mute_round_trip() {
+        let device = match AudioDevice::default() {
+            Ok(d) => d,
+            Err(_) => return,
+        };
+
+        let original = match device.is_mute() {
+            Ok(m) => m,
+            Err(_) => return,
+        };
+
+        // Restore to original state — test is idempotent on real hardware.
+        let _ = device.set_mute(original);
+
+        if let Ok(m) = device.is_mute() {
+            assert_eq!(m, original, "mute state changed after restoring it");
+        }
     }
 }

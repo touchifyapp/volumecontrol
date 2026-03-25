@@ -401,4 +401,46 @@ pub(crate) mod wasapi {
                 .map_err(|e| AudioError::SetMuteFailed(e.to_string()))
         }
     }
+
+    // -------------------------------------------------------------------------
+    // Unit tests
+    // -------------------------------------------------------------------------
+
+    #[cfg(test)]
+    mod tests {
+        use super::scalar_to_volume_percent;
+
+        #[test]
+        fn scalar_zero_maps_to_zero_percent() {
+            assert_eq!(scalar_to_volume_percent(0.0), 0);
+        }
+
+        #[test]
+        fn scalar_one_maps_to_hundred_percent() {
+            assert_eq!(scalar_to_volume_percent(1.0), 100);
+        }
+
+        #[test]
+        fn scalar_half_maps_to_fifty_percent() {
+            assert_eq!(scalar_to_volume_percent(0.5), 50);
+        }
+
+        #[test]
+        fn scalar_below_zero_clamps_to_zero() {
+            assert_eq!(scalar_to_volume_percent(-1.0), 0);
+        }
+
+        #[test]
+        fn scalar_above_one_clamps_to_hundred() {
+            assert_eq!(scalar_to_volume_percent(2.0), 100);
+        }
+
+        #[test]
+        fn scalar_rounds_correctly() {
+            // 0.754 * 100 = 75.4 → rounds to 75
+            assert_eq!(scalar_to_volume_percent(0.754), 75);
+            // 0.756 * 100 = 75.6 → rounds to 76
+            assert_eq!(scalar_to_volume_percent(0.756), 76);
+        }
+    }
 }
