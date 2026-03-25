@@ -21,67 +21,44 @@ on:
       - ".github/workflows/macos.yml"
 
 jobs:
-  # ── per-architecture jobs ───────────────────────────────────────────────────
+  # ── per-architecture matrix ─────────────────────────────────────────────────
 
-  check-x86_64:
-    name: Check (x86_64-apple-darwin)
-    runs-on: macos-15-intel # Intel runner
+  check:
+    name: Check (${{ matrix.target }})
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: x86_64-apple-darwin
+            runner: macos-15-intel
+          - target: aarch64-apple-darwin
+            runner: macos-latest
     steps:
       - uses: actions/checkout@v4
 
       - name: Install Rust stable
         uses: dtolnay/rust-toolchain@stable
         with:
-          targets: x86_64-apple-darwin
+          targets: ${{ matrix.target }}
 
       - name: cargo check (no features)
-        run: cargo check -p volumecontrol-macos --target x86_64-apple-darwin
+        run: cargo check -p volumecontrol-macos --target ${{ matrix.target }}
 
       - name: cargo check (coreaudio feature)
-        run: cargo check -p volumecontrol-macos --features coreaudio --target x86_64-apple-darwin
+        run: cargo check -p volumecontrol-macos --features coreaudio --target ${{ matrix.target }}
 
       - name: cargo test (no features)
-        run: cargo test -p volumecontrol-macos --target x86_64-apple-darwin
+        run: cargo test -p volumecontrol-macos --target ${{ matrix.target }}
 
       - name: cargo test (coreaudio feature)
-        run: cargo test -p volumecontrol-macos --features coreaudio --target x86_64-apple-darwin
+        run: cargo test -p volumecontrol-macos --features coreaudio --target ${{ matrix.target }}
 
       - name: cargo clippy (coreaudio feature)
         run: >
           cargo clippy -p volumecontrol-macos
           --features coreaudio
-          --target x86_64-apple-darwin
-          --all-targets
-          -- -D warnings
-
-  check-aarch64:
-    name: Check (aarch64-apple-darwin)
-    runs-on: macos-latest # Apple Silicon runner
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Install Rust stable
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          targets: aarch64-apple-darwin
-
-      - name: cargo check (no features)
-        run: cargo check -p volumecontrol-macos --target aarch64-apple-darwin
-
-      - name: cargo check (coreaudio feature)
-        run: cargo check -p volumecontrol-macos --features coreaudio --target aarch64-apple-darwin
-
-      - name: cargo test (no features)
-        run: cargo test -p volumecontrol-macos --target aarch64-apple-darwin
-
-      - name: cargo test (coreaudio feature)
-        run: cargo test -p volumecontrol-macos --features coreaudio --target aarch64-apple-darwin
-
-      - name: cargo clippy (coreaudio feature)
-        run: >
-          cargo clippy -p volumecontrol-macos
-          --features coreaudio
-          --target aarch64-apple-darwin
+          --target ${{ matrix.target }}
           --all-targets
           -- -D warnings
 
@@ -90,6 +67,7 @@ jobs:
   check-universal:
     name: Universal binary (x86_64 + aarch64)
     runs-on: macos-latest # Apple Silicon; can cross-compile to x86_64
+    needs: check
     steps:
       - uses: actions/checkout@v4
 
