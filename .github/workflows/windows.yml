@@ -1,0 +1,124 @@
+name: Windows CI
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+
+jobs:
+  windows:
+    name: ${{ matrix.target }}
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # 64-bit x86 — primary Windows target.
+          - target: x86_64-pc-windows-msvc
+            runner: windows-latest
+            virtual_audio: true
+          # 32-bit x86 (i386) — WoW64 binaries run on the x64 runner.
+          # Virtual audio driver cannot be installed reliably on x86, so
+          # WASAPI tests are build-only (same as ARM64).
+          - target: i686-pc-windows-msvc
+            runner: windows-latest
+            virtual_audio: false
+          # ARM64 — native ARM64 runner; no virtual audio driver release
+          # available for this architecture, so WASAPI tests are build-only.
+          - target: aarch64-pc-windows-msvc
+            runner: windows-11-arm
+            virtual_audio: false
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      # Install the Virtual Audio Driver on x64 only — the signed release cannot
+      # be reliably installed on x86 (i686) or ARM64.  This gives WASAPI tests a
+      # real audio endpoint on the x64 runner.
+      # Uses nefcon (downloaded directly) to install the driver silently.
+      - name: Install Virtual Audio Driver
+        if: matrix.virtual_audio
+        shell: powershell
+        run: |
+          # Enable test-signing so unsigned/self-signed drivers are accepted.
+          bcdedit /set testsigning on
+
+          $vadZip = "$env:TEMP\virtual-audio-driver.zip"
+          $vadDir = "$env:TEMP\virtual-audio-driver"
+          Invoke-WebRequest `
+            -Uri "https://github.com/VirtualDrivers/Virtual-Audio-Driver/releases/download/25.7.14/Virtual.Audio.Driver.Signed.-.25.7.14.zip" `
+            -OutFile $vadZip
+          Expand-Archive -Path $vadZip -DestinationPath $vadDir
+
+          # Trust the driver's signing certificate to avoid install prompts.
+          $signature = Get-AuthenticodeSignature "$vadDir\Virtual Audio Driver\virtualaudiodriver.cat"
+          $store = Get-Item -Path Cert:\LocalMachine\TrustedPublisher
+          $store.Open("ReadWrite")
+          $store.Add($signature.SignerCertificate)
+          $store.Close()
+
+          # Download nefcon directly from GitHub (winget may not have the package).
+          $nefconZip = "$env:TEMP\nefcon.zip"
+          $nefconDir = "$env:TEMP\nefcon"
+          Invoke-WebRequest `
+            -Uri "https://github.com/nefarius/nefcon/releases/download/v1.17.40/nefcon_v1.17.40.zip" `
+            -OutFile $nefconZip
+          Expand-Archive -Path $nefconZip -DestinationPath $nefconDir
+          $nefconc = "$nefconDir\x64\nefconc.exe"
+
+          # Create the virtual audio device node.
+          & $nefconc --create-device-node `
+            --hardware-id root\virtualaudiodriver `
+            --class-name MEDIA `
+            --class-guid 4d36e96c-e325-11ce-bfc1-08002be10318
+
+          # Install the virtual audio driver.
+          & $nefconc --install-driver --inf-path "$vadDir\Virtual Audio Driver\VirtualAudioDriver.inf"
+
+      # Check that the crate compiles without the wasapi feature (stub path).
+      - name: Check (no feature)
+        run: cargo check -p volumecontrol-windows --target ${{ matrix.target }}
+
+      # Check that the crate compiles with the real WASAPI backend enabled.
+      - name: Check (wasapi feature)
+        run: cargo check -p volumecontrol-windows --features wasapi --target ${{ matrix.target }}
+
+      # Build the crate without the wasapi feature.
+      - name: Build (no feature)
+        run: cargo build -p volumecontrol-windows --target ${{ matrix.target }}
+
+      # Build the crate with the real WASAPI backend enabled.
+      - name: Build (wasapi feature)
+        run: cargo build -p volumecontrol-windows --features wasapi --target ${{ matrix.target }}
+
+      # Run the stub-path tests (no real WASAPI calls).
+      - name: Test (no feature)
+        run: cargo test -p volumecontrol-windows --target ${{ matrix.target }}
+
+      # Build and run the real WASAPI tests on x64 only (virtual audio device
+      # is only installed for that target).
+      - name: Test (wasapi feature)
+        if: matrix.virtual_audio
+        run: cargo test -p volumecontrol-windows --features wasapi --target ${{ matrix.target }}
+
+      # On i686 and ARM64 no virtual audio driver is available — only build the
+      # test binary to verify it compiles; skip execution.
+      - name: Build tests (wasapi feature, no execute)
+        if: "!matrix.virtual_audio"
+        run: cargo test -p volumecontrol-windows --features wasapi --target ${{ matrix.target }} --no-run
+
+      # Lint with Clippy; all warnings are treated as errors.
+      - name: Clippy
+        run: >
+          cargo clippy
+          -p volumecontrol-windows
+          --all-targets
+          --all-features
+          --target ${{ matrix.target }}
+          -- -D warnings
