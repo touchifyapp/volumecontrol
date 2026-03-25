@@ -1,6 +1,6 @@
 mod internal;
 
-use volumecontrol_core::{AudioDevice as AudioDeviceTrait, AudioError};
+use volumecontrol_core::AudioError;
 
 /// Represents a WASAPI audio output device (Windows).
 ///
@@ -21,7 +21,7 @@ pub struct AudioDevice {
     name: String,
 }
 
-impl AudioDeviceTrait for AudioDevice {
+impl volumecontrol_core::AudioDevice for AudioDevice {
     /// Returns the system default audio render device.
     ///
     /// # Errors
@@ -227,7 +227,7 @@ impl AudioDeviceTrait for AudioDevice {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use volumecontrol_core::AudioDevice as AudioDeviceTrait;
+    use volumecontrol_core::AudioDevice as _;
 
     // ------------------------------------------------------------------
     // Stub-path tests — only compiled and run when `wasapi` is disabled.

@@ -12,7 +12,7 @@
 
 mod internal;
 
-use volumecontrol_core::{AudioDevice as AudioDeviceTrait, AudioError};
+use volumecontrol_core::AudioError;
 
 /// Represents a CoreAudio audio output device (macOS).
 ///
@@ -43,7 +43,7 @@ impl AudioDevice {
     }
 }
 
-impl AudioDeviceTrait for AudioDevice {
+impl volumecontrol_core::AudioDevice for AudioDevice {
     fn default() -> Result<Self, AudioError> {
         #[cfg(feature = "coreaudio")]
         {
@@ -167,7 +167,7 @@ impl AudioDeviceTrait for AudioDevice {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use volumecontrol_core::AudioDevice as AudioDeviceTrait;
+    use volumecontrol_core::AudioDevice as _;
 
     // ── stub tests (no coreaudio feature) ────────────────────────────────────
     // These tests are only compiled and run when the `coreaudio` feature is
