@@ -24,6 +24,13 @@ thiserror = "2.0"
 # libraries for each GNU cross target before building.  `libasound2-dev` is a
 # transitive build requirement of `libpulse-dev` on Debian/Ubuntu.
 #
+# After installing the packages a `<rust-target-triple>-pkg-config` wrapper
+# script is created for each target.  The `pkg-config` Rust crate looks for
+# this wrapper when cross-compiling; without it the crate falls back to the
+# host's `pkg-config` (which knows nothing about the target libraries) and
+# never emits `cargo:rustc-link-search`, causing the linker to fail when
+# building test binaries.
+#
 # musl targets are not listed because PulseAudio's shared library is
 # glibc-linked and cannot be dynamically linked into musl binaries; those
 # targets are checked without the `pulseaudio` feature.
@@ -34,10 +41,20 @@ thiserror = "2.0"
 pre-build = [
     "dpkg --add-architecture $CROSS_DEB_ARCH",
     "apt-get update && apt-get --assume-yes install libpulse-dev:$CROSS_DEB_ARCH libasound2-dev:$CROSS_DEB_ARCH",
+    # The `pkg-config` Rust crate looks for `<target-triple>-pkg-config` when
+    # cross-compiling.  Without this wrapper the crate falls back to the host
+    # pkg-config (which doesn't know about arm64 packages) and never emits
+    # `cargo:rustc-link-search`, causing the test-binary link to fail.
+    "echo '#!/bin/sh' > /usr/local/bin/aarch64-unknown-linux-gnu-pkg-config",
+    "echo 'PKG_CONFIG_LIBDIR=/usr/lib/aarch64-linux-gnu/pkgconfig PKG_CONFIG_ALLOW_CROSS=1 exec pkg-config \"$@\"' >> /usr/local/bin/aarch64-unknown-linux-gnu-pkg-config",
+    "chmod +x /usr/local/bin/aarch64-unknown-linux-gnu-pkg-config",
 ]
 
 [workspace.metadata.cross.target.armv7-unknown-linux-gnueabihf]
 pre-build = [
     "dpkg --add-architecture $CROSS_DEB_ARCH",
     "apt-get update && apt-get --assume-yes install libpulse-dev:$CROSS_DEB_ARCH libasound2-dev:$CROSS_DEB_ARCH",
+    "echo '#!/bin/sh' > /usr/local/bin/armv7-unknown-linux-gnueabihf-pkg-config",
+    "echo 'PKG_CONFIG_LIBDIR=/usr/lib/arm-linux-gnueabihf/pkgconfig PKG_CONFIG_ALLOW_CROSS=1 exec pkg-config \"$@\"' >> /usr/local/bin/armv7-unknown-linux-gnueabihf-pkg-config",
+    "chmod +x /usr/local/bin/armv7-unknown-linux-gnueabihf-pkg-config",
 ]
