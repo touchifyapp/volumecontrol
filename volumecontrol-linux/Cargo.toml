@@ -1,0 +1,20 @@
+[package]
+name = "volumecontrol-linux"
+description = "Linux (PulseAudio) volume control bindings for volumecontrol"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+volumecontrol-core = { workspace = true }
+
+# Enabled by the `pulseaudio` feature once native PulseAudio dev libraries
+# are available on the build host.
+[dependencies.libpulse-binding]
+version = "2.30"
+optional = true
+
+[features]
+# Enable real PulseAudio integration. Requires libpulse-dev to be installed.
+pulseaudio = ["dep:libpulse-binding"]

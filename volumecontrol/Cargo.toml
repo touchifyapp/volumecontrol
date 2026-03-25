@@ -1,0 +1,19 @@
+[package]
+name = "volumecontrol"
+description = "Cross-platform crate to control system audio volume"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+volumecontrol-core = { workspace = true }
+
+[target.'cfg(target_os = "linux")'.dependencies]
+volumecontrol-linux = { path = "../volumecontrol-linux" }
+
+[target.'cfg(target_os = "windows")'.dependencies]
+volumecontrol-windows = { path = "../volumecontrol-windows" }
+
+[target.'cfg(target_os = "macos")'.dependencies]
+volumecontrol-macos = { path = "../volumecontrol-macos" }

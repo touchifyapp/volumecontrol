@@ -1,0 +1,19 @@
+[package]
+name = "volumecontrol-macos"
+description = "macOS (CoreAudio) volume control bindings for volumecontrol"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+volumecontrol-core = { workspace = true }
+
+# Enabled by the `coreaudio` feature; only meaningful when targeting macOS.
+[dependencies.objc2-core-audio]
+version = "0.3"
+optional = true
+
+[features]
+# Enable real CoreAudio integration. Only useful when building for macOS.
+coreaudio = ["dep:objc2-core-audio"]
