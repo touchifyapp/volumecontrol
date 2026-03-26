@@ -17,10 +17,13 @@
 //!
 //! fn main() -> Result<(), volumecontrol::AudioError> {
 //!     let device = AudioDevice::from_default()?;
+//!     println!("{device}");  // e.g. "Speakers ({0.0.0.00000000}.{…})"
 //!     println!("Current volume: {}%", device.get_vol()?);
 //!     Ok(())
 //! }
 //! ```
+
+use std::fmt;
 
 pub use volumecontrol_core::AudioError;
 pub use volumecontrol_core::DeviceInfo;
@@ -49,6 +52,16 @@ compile_error!(
 /// are required to use the methods below.
 #[derive(Debug)]
 pub struct AudioDevice(Inner);
+
+impl fmt::Display for AudioDevice {
+    /// Formats the device by delegating to the inner backend.
+    ///
+    /// The conventional format is `"name (id)"`,
+    /// e.g. `"Speakers ({0.0.0.00000000}.{…})"`.
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.0.fmt(f)
+    }
+}
 
 impl AudioDevice {
     /// Returns the system default audio output device.
@@ -182,6 +195,24 @@ mod tests {
 
     // A bogus device name guaranteed not to match any real audio device.
     const BOGUS_NAME: &str = "zzz-volumecontrol-test-nonexistent-device-name";
+
+    /// `Display` output for the default device must follow `"name (id)"`.
+    #[test]
+    fn display_contains_name_and_id() {
+        let device = AudioDevice::from_default().expect("from_default()");
+        let s = device.to_string();
+        assert!(
+            s.contains(device.name()),
+            "Display output should contain the device name; got: {s}"
+        );
+        assert!(
+            s.contains(device.id()),
+            "Display output should contain the device id; got: {s}"
+        );
+        // Verify the exact "name (id)" format.
+        let expected = format!("{} ({})", device.name(), device.id());
+        assert_eq!(s, expected);
+    }
 
     /// The default device must have a non-empty id and name.
     #[test]

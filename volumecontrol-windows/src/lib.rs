@@ -54,6 +54,13 @@ impl fmt::Debug for AudioDevice {
     }
 }
 
+impl fmt::Display for AudioDevice {
+    /// Formats the device as `"name (id)"`.
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{} ({})", self.name, self.id)
+    }
+}
+
 #[cfg(feature = "wasapi")]
 impl AudioDevice {
     /// Calls `op` with the cached [`IAudioEndpointVolume`], retrying once
@@ -350,6 +357,24 @@ impl AudioDeviceTrait for AudioDevice {
 mod tests {
     use super::*;
     use volumecontrol_core::AudioDevice as AudioDeviceTrait;
+
+    /// `Display` output must follow the `"name (id)"` format.
+    ///
+    /// The test is gated on `not(wasapi)` because constructing an
+    /// [`AudioDevice`] directly without a valid COM endpoint is only safe when
+    /// the `wasapi` feature is disabled (no `endpoint` field exists).
+    #[test]
+    #[cfg(not(feature = "wasapi"))]
+    fn display_format_is_name_paren_id() {
+        let device = AudioDevice {
+            id: "{0.0.0.00000000}.{E9B0A576-1234-5678-ABCD-000000000000}".to_string(),
+            name: "Speakers".to_string(),
+        };
+        assert_eq!(
+            device.to_string(),
+            "Speakers ({0.0.0.00000000}.{E9B0A576-1234-5678-ABCD-000000000000})"
+        );
+    }
 
     // ------------------------------------------------------------------
     // Stub-path tests — only compiled and run when `wasapi` is disabled.
