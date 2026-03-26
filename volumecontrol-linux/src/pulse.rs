@@ -9,7 +9,7 @@
 //! [`Context`] types from `libpulse-binding` are `!Send`.  Use on a single
 //! thread only.
 
-use std::{cell::RefCell, rc::Rc};
+use std::{cell::RefCell, mem::ManuallyDrop, rc::Rc};
 
 use libpulse_binding as pulse;
 use pulse::{
@@ -146,13 +146,36 @@ fn wait_for_op<C: ?Sized>(
 /// Reuse a single `PulseConnection` across multiple operations to avoid the
 /// overhead of re-establishing a connection on every call.
 ///
+/// # Drop order
+///
+/// PulseAudio's standard main loop holds deferred events that are also
+/// referenced by the context.  The context **must** be dropped before the
+/// main loop; otherwise the main loop frees its deferred events first and the
+/// context's subsequent cleanup fires `Assertion '!e->dead' failed` inside
+/// `mainloop_defer_free()`.  [`ManuallyDrop`] lets us enforce this order in
+/// the [`Drop`] impl regardless of struct field declaration order.
+///
 /// # Thread safety
 ///
 /// `PulseConnection` is `!Send` because [`Mainloop`] and [`Context`] from
 /// `libpulse-binding` are `!Send`.  Use on a single thread only.
 pub(crate) struct PulseConnection {
-    mainloop: Mainloop,
-    context: Context,
+    mainloop: ManuallyDrop<Mainloop>,
+    context: ManuallyDrop<Context>,
+}
+
+impl Drop for PulseConnection {
+    fn drop(&mut self) {
+        // SAFETY: both fields are valid and non-null — they were set in `new()`
+        // or `ensure_ready()` and are never taken out of `ManuallyDrop`
+        // elsewhere.  We drop `context` first so that PulseAudio's internal
+        // deferred-event list is cleared before the mainloop tears down its own
+        // event infrastructure.
+        unsafe {
+            ManuallyDrop::drop(&mut self.context);
+            ManuallyDrop::drop(&mut self.mainloop);
+        }
+    }
 }
 
 impl PulseConnection {
@@ -164,7 +187,10 @@ impl PulseConnection {
     /// be established.
     pub(crate) fn new() -> Result<Self, AudioError> {
         let (mainloop, context) = connect()?;
-        Ok(Self { mainloop, context })
+        Ok(Self {
+            mainloop: ManuallyDrop::new(mainloop),
+            context: ManuallyDrop::new(context),
+        })
     }
 
     /// Reconnects to the PulseAudio server if the context is no longer in the
@@ -174,8 +200,14 @@ impl PulseConnection {
             let (mainloop, context) = connect()?;
             // Drop the old context before the old mainloop so that PA's
             // internal reference counting sees the context gone first.
-            self.context = context;
-            self.mainloop = mainloop;
+            // SAFETY: both fields were initialised in `new()` or a previous
+            // `ensure_ready()` call and have not been moved out since.
+            unsafe {
+                ManuallyDrop::drop(&mut self.context);
+                ManuallyDrop::drop(&mut self.mainloop);
+            }
+            self.context = ManuallyDrop::new(context);
+            self.mainloop = ManuallyDrop::new(mainloop);
         }
         Ok(())
     }
