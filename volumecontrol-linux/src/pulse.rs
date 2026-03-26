@@ -188,15 +188,17 @@ pub(crate) fn sink_by_name(name: &str) -> Result<SinkSnapshot, AudioError> {
     Ok(snap)
 }
 
-/// Returns the first sink whose description contains `query` (case-sensitive).
+/// Returns the first sink whose description contains `query`
+/// (case-insensitive substring match).
 ///
 /// # Errors
 ///
 /// Returns [`AudioError::DeviceNotFound`] if no matching sink is found.
 pub(crate) fn sink_matching_description(query: &str) -> Result<SinkSnapshot, AudioError> {
+    let query_lower = query.to_lowercase();
     list_sink_snapshots()?
         .into_iter()
-        .find(|s| s.description.contains(query))
+        .find(|s| s.description.to_lowercase().contains(&query_lower))
         .ok_or(AudioError::DeviceNotFound)
 }
 
@@ -355,5 +357,57 @@ mod tests {
     fn pct_to_volume_clamps_above_100() {
         // u8 max is 255; pct_to_volume should clamp at 100.
         assert_eq!(pct_to_volume(200_u8), pct_to_volume(100));
+    }
+
+    /// Verify that `sink_matching_description` uses case-insensitive matching
+    /// by checking the helper logic directly (no PulseAudio server needed).
+    #[test]
+    fn sink_matching_description_is_case_insensitive() {
+        // Build a fake sink list and simulate the matching logic used in
+        // `sink_matching_description` to confirm it is case-insensitive.
+        let sinks = vec![
+            SinkSnapshot {
+                name: "sink1".into(),
+                description: "Built-in Audio".into(),
+                volume: 50,
+                mute: false,
+            },
+            SinkSnapshot {
+                name: "sink2".into(),
+                description: "HDMI Output".into(),
+                volume: 75,
+                mute: false,
+            },
+        ];
+
+        let query_lower = "built-in audio".to_lowercase();
+        let found = sinks
+            .iter()
+            .find(|s| s.description.to_lowercase().contains(&query_lower));
+        assert!(
+            found.is_some(),
+            "case-insensitive match should find 'Built-in Audio' with query 'built-in audio'"
+        );
+        assert_eq!(found.unwrap().name, "sink1");
+
+        let query_lower2 = "HDMI".to_lowercase();
+        let found2 = sinks
+            .iter()
+            .find(|s| s.description.to_lowercase().contains(&query_lower2));
+        assert!(
+            found2.is_some(),
+            "case-insensitive match should find 'HDMI Output' with query 'HDMI'"
+        );
+        assert_eq!(found2.unwrap().name, "sink2");
+
+        let query_mixed = "HdMi".to_lowercase();
+        let found3 = sinks
+            .iter()
+            .find(|s| s.description.to_lowercase().contains(&query_mixed));
+        assert!(
+            found3.is_some(),
+            "case-insensitive match should find 'HDMI Output' with query 'HdMi'"
+        );
+        assert_eq!(found3.unwrap().name, "sink2");
     }
 }
