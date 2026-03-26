@@ -19,8 +19,8 @@ mod pulse;
 /// # Thread safety
 ///
 /// When the `pulseaudio` feature is enabled, `AudioDevice` is **not** `Send`
-/// because it holds a cached PulseAudio connection ([`Mainloop`] and
-/// [`Context`] from `libpulse-binding` are `!Send`).  Use on a single thread
+/// because it holds a cached PulseAudio connection (`Mainloop` and
+/// `Context` from `libpulse-binding` are `!Send`).  Use on a single thread
 /// only.  A threaded-mainloop wrapper that restores `Send + Sync` may be
 /// added in a future release.
 pub struct AudioDevice {
