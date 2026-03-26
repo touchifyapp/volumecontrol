@@ -46,20 +46,22 @@ impl fmt::Debug for AudioDevice {
     }
 }
 
-/// Returns a mutable reference to the `PulseConnection` inside `opt`,
-/// creating a fresh connection if the slot is empty.
-///
-/// Each [`PulseConnection`] method already calls `ensure_ready()` internally,
-/// so callers do not need to handle reconnection themselves.
 #[cfg(feature = "pulseaudio")]
-fn get_or_connect(
-    opt: &mut Option<pulse::PulseConnection>,
-) -> Result<&mut pulse::PulseConnection, AudioError> {
-    if opt.is_none() {
-        *opt = Some(pulse::PulseConnection::new()?);
+impl AudioDevice {
+    /// Returns a mutable reference to the cached [`pulse::PulseConnection`],
+    /// creating a fresh connection if the slot is empty.
+    ///
+    /// Each [`pulse::PulseConnection`] method already calls `ensure_ready()`
+    /// internally, so callers do not need to handle reconnection themselves.
+    fn get_or_connect(
+        opt: &mut Option<pulse::PulseConnection>,
+    ) -> Result<&mut pulse::PulseConnection, AudioError> {
+        if opt.is_none() {
+            *opt = Some(pulse::PulseConnection::new()?);
+        }
+        opt.as_mut()
+            .ok_or_else(|| AudioError::InitializationFailed("connection slot was empty".into()))
     }
-    opt.as_mut()
-        .ok_or_else(|| AudioError::InitializationFailed("connection slot was empty".into()))
 }
 
 impl AudioDeviceTrait for AudioDevice {
@@ -128,7 +130,7 @@ impl AudioDeviceTrait for AudioDevice {
         #[cfg(feature = "pulseaudio")]
         {
             let mut guard = self.conn.borrow_mut();
-            let conn = get_or_connect(&mut guard)?;
+            let conn = Self::get_or_connect(&mut guard)?;
             Ok(conn.sink_by_name(&self.id)?.volume)
         }
         #[cfg(not(feature = "pulseaudio"))]
@@ -139,7 +141,7 @@ impl AudioDeviceTrait for AudioDevice {
         #[cfg(feature = "pulseaudio")]
         {
             let mut guard = self.conn.borrow_mut();
-            let conn = get_or_connect(&mut guard)?;
+            let conn = Self::get_or_connect(&mut guard)?;
             conn.set_sink_volume(&self.id, vol)
         }
         #[cfg(not(feature = "pulseaudio"))]
@@ -153,7 +155,7 @@ impl AudioDeviceTrait for AudioDevice {
         #[cfg(feature = "pulseaudio")]
         {
             let mut guard = self.conn.borrow_mut();
-            let conn = get_or_connect(&mut guard)?;
+            let conn = Self::get_or_connect(&mut guard)?;
             Ok(conn.sink_by_name(&self.id)?.mute)
         }
         #[cfg(not(feature = "pulseaudio"))]
@@ -164,7 +166,7 @@ impl AudioDeviceTrait for AudioDevice {
         #[cfg(feature = "pulseaudio")]
         {
             let mut guard = self.conn.borrow_mut();
-            let conn = get_or_connect(&mut guard)?;
+            let conn = Self::get_or_connect(&mut guard)?;
             conn.set_sink_mute(&self.id, muted)
         }
         #[cfg(not(feature = "pulseaudio"))]
