@@ -79,7 +79,7 @@ jobs:
           restore-keys: ${{ runner.os }}-cargo-audit-
 
       - name: Install cargo-audit
-        run: cargo install cargo-audit --locked
+        run: command -v cargo-audit || cargo install cargo-audit --locked
 
       - name: cargo audit
         run: cargo audit
