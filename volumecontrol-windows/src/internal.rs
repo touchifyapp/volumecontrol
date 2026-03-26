@@ -337,14 +337,21 @@ pub(crate) mod wasapi {
     ///
     /// # Errors
     ///
-    /// Returns [`AudioError::GetVolumeFailed`] on COM failure.
+    /// Returns [`AudioError::DeviceNotFound`] when the endpoint has been
+    /// invalidated (`AUDCLNT_E_DEVICE_INVALIDATED`), signalling the caller to
+    /// refresh its cached interface and retry.  Returns
+    /// [`AudioError::GetVolumeFailed`] on any other COM failure.
     pub(crate) fn get_volume(endpoint: &IAudioEndpointVolume) -> Result<u8, AudioError> {
         // SAFETY: GetMasterVolumeLevelScalar is a simple read-only COM call
         // with no aliasing concerns.
         let scalar = unsafe {
-            endpoint
-                .GetMasterVolumeLevelScalar()
-                .map_err(|e| AudioError::GetVolumeFailed(e.to_string()))?
+            endpoint.GetMasterVolumeLevelScalar().map_err(|e| {
+                if e.code().0 == AUDCLNT_E_DEVICE_INVALIDATED {
+                    AudioError::DeviceNotFound
+                } else {
+                    AudioError::GetVolumeFailed(e.to_string())
+                }
+            })?
         };
 
         Ok(scalar_to_volume_percent(scalar))
@@ -357,7 +364,10 @@ pub(crate) mod wasapi {
     ///
     /// # Errors
     ///
-    /// Returns [`AudioError::SetVolumeFailed`] on COM failure.
+    /// Returns [`AudioError::DeviceNotFound`] when the endpoint has been
+    /// invalidated (`AUDCLNT_E_DEVICE_INVALIDATED`), signalling the caller to
+    /// refresh its cached interface and retry.  Returns
+    /// [`AudioError::SetVolumeFailed`] on any other COM failure.
     pub(crate) fn set_volume(endpoint: &IAudioEndpointVolume, vol: u8) -> Result<(), AudioError> {
         let scalar = f32::from(vol.min(100)) / 100.0_f32;
 
@@ -367,7 +377,13 @@ pub(crate) mod wasapi {
         unsafe {
             endpoint
                 .SetMasterVolumeLevelScalar(scalar, std::ptr::null())
-                .map_err(|e| AudioError::SetVolumeFailed(e.to_string()))
+                .map_err(|e| {
+                    if e.code().0 == AUDCLNT_E_DEVICE_INVALIDATED {
+                        AudioError::DeviceNotFound
+                    } else {
+                        AudioError::SetVolumeFailed(e.to_string())
+                    }
+                })
         }
     }
 
@@ -375,14 +391,21 @@ pub(crate) mod wasapi {
     ///
     /// # Errors
     ///
-    /// Returns [`AudioError::GetMuteFailed`] on COM failure.
+    /// Returns [`AudioError::DeviceNotFound`] when the endpoint has been
+    /// invalidated (`AUDCLNT_E_DEVICE_INVALIDATED`), signalling the caller to
+    /// refresh its cached interface and retry.  Returns
+    /// [`AudioError::GetMuteFailed`] on any other COM failure.
     pub(crate) fn get_mute(endpoint: &IAudioEndpointVolume) -> Result<bool, AudioError> {
         // SAFETY: GetMute is a simple read-only COM call.  The returned BOOL
         // is converted to a Rust bool via as_bool().
         let b = unsafe {
-            endpoint
-                .GetMute()
-                .map_err(|e| AudioError::GetMuteFailed(e.to_string()))?
+            endpoint.GetMute().map_err(|e| {
+                if e.code().0 == AUDCLNT_E_DEVICE_INVALIDATED {
+                    AudioError::DeviceNotFound
+                } else {
+                    AudioError::GetMuteFailed(e.to_string())
+                }
+            })?
         };
 
         Ok(b.as_bool())
@@ -392,14 +415,21 @@ pub(crate) mod wasapi {
     ///
     /// # Errors
     ///
-    /// Returns [`AudioError::SetMuteFailed`] on COM failure.
+    /// Returns [`AudioError::DeviceNotFound`] when the endpoint has been
+    /// invalidated (`AUDCLNT_E_DEVICE_INVALIDATED`), signalling the caller to
+    /// refresh its cached interface and retry.  Returns
+    /// [`AudioError::SetMuteFailed`] on any other COM failure.
     pub(crate) fn set_mute(endpoint: &IAudioEndpointVolume, muted: bool) -> Result<(), AudioError> {
         // SAFETY: SetMute is a simple setter.  Passing a null pointer for
         // pGUIDEventContext is explicitly permitted by the WASAPI documentation.
         unsafe {
-            endpoint
-                .SetMute(muted, std::ptr::null())
-                .map_err(|e| AudioError::SetMuteFailed(e.to_string()))
+            endpoint.SetMute(muted, std::ptr::null()).map_err(|e| {
+                if e.code().0 == AUDCLNT_E_DEVICE_INVALIDATED {
+                    AudioError::DeviceNotFound
+                } else {
+                    AudioError::SetMuteFailed(e.to_string())
+                }
+            })
         }
     }
 
