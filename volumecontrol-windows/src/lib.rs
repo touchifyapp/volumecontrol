@@ -42,6 +42,11 @@ pub struct AudioDevice {
 
 impl fmt::Debug for AudioDevice {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        // The `endpoint` field (a COM interface pointer) is intentionally
+        // omitted: it contains no useful human-readable information and
+        // exposing raw COM interface addresses in debug output would be
+        // confusing.  `finish_non_exhaustive` signals that the struct has
+        // additional fields.
         f.debug_struct("AudioDevice")
             .field("id", &self.id)
             .field("name", &self.name)
@@ -53,37 +58,51 @@ impl fmt::Debug for AudioDevice {
 impl AudioDevice {
     /// Calls `op` with the cached [`IAudioEndpointVolume`], retrying once
     /// after an automatic cache refresh if the endpoint signals
-    /// `AUDCLNT_E_DEVICE_INVALIDATED` (returned as
-    /// [`AudioError::DeviceNotFound`]).
+    /// [`EndpointError::DeviceInvalidated`] (`AUDCLNT_E_DEVICE_INVALIDATED`).
     ///
     /// A [`ComGuard`] is created for the duration of the call to ensure COM is
     /// initialised on the calling thread.
     ///
     /// # Errors
     ///
-    /// Returns whatever error `op` returns, or a refresh / re-initialisation
-    /// error if the cache could not be refreshed.
+    /// - On `DeviceInvalidated` the cache is refreshed via
+    ///   [`try_refresh_endpoint`]; if the refresh itself fails, that error is
+    ///   returned.  If the retry still returns `DeviceInvalidated` (device
+    ///   disappeared between calls) `AudioError::DeviceNotFound` is returned.
+    /// - On any other [`EndpointError::Error`] the wrapped [`AudioError`] is
+    ///   propagated unchanged.
     ///
     /// [`ComGuard`]: internal::wasapi::ComGuard
+    /// [`try_refresh_endpoint`]: AudioDevice::try_refresh_endpoint
     fn with_endpoint<T>(
         &self,
-        op: impl Fn(&IAudioEndpointVolume) -> Result<T, AudioError>,
+        op: impl Fn(&IAudioEndpointVolume) -> Result<T, internal::wasapi::EndpointError>,
     ) -> Result<T, AudioError> {
         let _com = internal::wasapi::ComGuard::new()?;
-        let result = op(&self.endpoint.lock().expect("endpoint lock poisoned"));
-        if matches!(result, Err(AudioError::DeviceNotFound)) {
-            // AUDCLNT_E_DEVICE_INVALIDATED — refresh and retry once.
-            self.try_refresh_endpoint()?;
-            return op(&self.endpoint.lock().expect("endpoint lock poisoned"));
+        match op(&self.endpoint.lock().expect("endpoint lock poisoned")) {
+            Ok(v) => Ok(v),
+            Err(internal::wasapi::EndpointError::Error(e)) => Err(e),
+            Err(internal::wasapi::EndpointError::DeviceInvalidated) => {
+                // AUDCLNT_E_DEVICE_INVALIDATED — refresh cache and retry once.
+                self.try_refresh_endpoint()?;
+                match op(&self.endpoint.lock().expect("endpoint lock poisoned")) {
+                    Ok(v) => Ok(v),
+                    Err(internal::wasapi::EndpointError::Error(e)) => Err(e),
+                    // Still invalidated after a fresh endpoint: device is gone.
+                    Err(internal::wasapi::EndpointError::DeviceInvalidated) => {
+                        Err(AudioError::DeviceNotFound)
+                    }
+                }
+            }
         }
-        result
     }
 
     /// Re-resolves the device by its cached ID and replaces the stored
     /// [`IAudioEndpointVolume`] with a freshly activated one.
     ///
-    /// Called by [`with_endpoint`] when a volume or mute operation returns
-    /// [`AudioError::DeviceNotFound`] (mapped from `AUDCLNT_E_DEVICE_INVALIDATED`).
+    /// Called by [`with_endpoint`] when an endpoint operation returns
+    /// [`EndpointError::DeviceInvalidated`]
+    /// (`AUDCLNT_E_DEVICE_INVALIDATED`).
     /// The caller is responsible for ensuring COM is already initialised on the
     /// current thread (i.e. a [`ComGuard`] is alive in the calling scope).
     ///
