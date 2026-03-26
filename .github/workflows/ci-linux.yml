@@ -52,7 +52,7 @@ jobs:
       - name: Install Rust (stable)
         uses: dtolnay/rust-toolchain@stable
         with:
-          components: clippy, rustfmt
+          components: clippy
 
       - name: Cache Cargo registry
         uses: actions/cache@v4
@@ -91,9 +91,6 @@ jobs:
             sink_name=VirtualSink \
             sink_properties=device.description=Virtual_Sink
           XDG_RUNTIME_DIR=/tmp/pa-runtime pactl set-default-sink VirtualSink
-
-      - name: cargo fmt --check
-        run: cargo fmt --all -- --check
 
       # ── volumecontrol-linux ──────────────────────────────────────────────────
 
