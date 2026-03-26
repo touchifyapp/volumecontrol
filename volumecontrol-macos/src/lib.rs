@@ -7,8 +7,8 @@
 //!
 //! When the `coreaudio` feature **is** enabled the implementation bridges to
 //! the native macOS CoreAudio Hardware Abstraction Layer (HAL) via the
-//! [`objc2_core_audio`] bindings.  All unsafe interactions with CoreAudio are
-//! contained in the [`internal`] module.
+//! `objc2_core_audio` bindings.  All unsafe interactions with CoreAudio are
+//! contained in the `internal` module.
 
 mod internal;
 
