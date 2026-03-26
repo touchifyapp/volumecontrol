@@ -46,6 +46,13 @@ impl fmt::Debug for AudioDevice {
     }
 }
 
+impl fmt::Display for AudioDevice {
+    /// Formats the device as `"name (id)"`.
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{} ({})", self.name, self.id)
+    }
+}
+
 #[cfg(feature = "pulseaudio")]
 impl AudioDevice {
     /// Returns a mutable reference to the cached [`pulse::PulseConnection`],
@@ -189,6 +196,21 @@ impl AudioDeviceTrait for AudioDevice {
 mod tests {
     use super::*;
     use volumecontrol_core::AudioDevice as AudioDeviceTrait;
+
+    /// `Display` output must follow the `"name (id)"` format.
+    #[test]
+    fn display_format_is_name_paren_id() {
+        let device = AudioDevice {
+            id: "alsa_output.pci-0000_00_1b.0.analog-stereo".to_string(),
+            name: "Built-in Audio Analog Stereo".to_string(),
+            #[cfg(feature = "pulseaudio")]
+            conn: std::rc::Rc::new(std::cell::RefCell::new(None)),
+        };
+        assert_eq!(
+            device.to_string(),
+            "Built-in Audio Analog Stereo (alsa_output.pci-0000_00_1b.0.analog-stereo)"
+        );
+    }
 
     #[cfg(not(feature = "pulseaudio"))]
     #[test]

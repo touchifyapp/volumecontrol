@@ -39,7 +39,7 @@ Every platform crate exposes an `AudioDevice` struct that implements
 `volumecontrol_core::AudioDevice`.  The methods and their signatures are:
 
 ```rust
-pub trait AudioDevice: Sized {
+pub trait AudioDevice: Sized + fmt::Display {
     fn from_default()             -> Result<Self, AudioError>;
     fn from_id(id: &str)      -> Result<Self, AudioError>;
     fn from_name(name: &str)  -> Result<Self, AudioError>;
@@ -98,6 +98,13 @@ Platform-specific identifier formats:
    `#[cfg(test)] mod tests { … }` block inside the same file.
 6. **Keep the build green at all times.**  Do not commit code that fails
    `cargo check`, `cargo test`, or `cargo clippy`.
+7. **All public types must implement both `Debug` and `Display`.**
+   - `Debug` may be derived or implemented manually (prefer manual when the
+     struct contains non-debuggable fields such as COM pointers).
+   - `Display` must format an `AudioDevice` as `"name (id)"`, e.g.
+     `"Speakers ({0.0.0.00000000}.{…})"`.  `DeviceInfo` uses the same format.
+   - `AudioDevice` implementations satisfy `Display` as a compile-time
+     requirement because `fmt::Display` is a supertrait of `AudioDevice`.
 
 ---
 

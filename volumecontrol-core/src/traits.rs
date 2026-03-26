@@ -1,10 +1,15 @@
+use std::fmt;
+
 use crate::{AudioError, DeviceInfo};
 
 /// Common interface for audio device volume control.
 ///
 /// Implementors represent a single audio output device and expose uniform
 /// methods for querying and changing its volume and mute state.
-pub trait AudioDevice: Sized {
+///
+/// Every implementor must also implement [`fmt::Display`].  The conventional
+/// format is `"name (id)"`, e.g. `"Speakers ({0.0.0.00000000}.{…})"`.
+pub trait AudioDevice: Sized + fmt::Display {
     /// Returns the system default audio output device.
     ///
     /// # Errors

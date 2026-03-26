@@ -131,13 +131,17 @@ let device = AudioDevice::from_name("Speakers")?;
 ```rust
 let devices = AudioDevice::list()?;
 for info in &devices {
-    println!("{}  —  {}", info.id, info.name);
+    // DeviceInfo implements Display as "name (id)"
+    println!("{info}");
 }
 ```
 
 ### Read device ID and name
 
 ```rust
+// Display shows "name (id)" — useful for logs and CLI output
+println!("{device}");
+
 // id() returns the opaque platform identifier used by from_id() and list()
 println!("Device id:   {}", device.id());
 

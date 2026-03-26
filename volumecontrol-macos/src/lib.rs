@@ -12,6 +12,8 @@
 
 mod internal;
 
+use std::fmt;
+
 use volumecontrol_core::{AudioDevice as AudioDeviceTrait, AudioError, DeviceInfo};
 
 /// Represents a CoreAudio audio output device (macOS).
@@ -27,6 +29,13 @@ pub struct AudioDevice {
     id: String,
     /// Human-readable device name (`kAudioObjectPropertyName`).
     name: String,
+}
+
+impl fmt::Display for AudioDevice {
+    /// Formats the device as `"name (id)"`.
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{} ({})", self.name, self.id)
+    }
 }
 
 #[cfg(feature = "coreaudio")]
@@ -177,6 +186,16 @@ impl AudioDeviceTrait for AudioDevice {
 mod tests {
     use super::*;
     use volumecontrol_core::AudioDevice as AudioDeviceTrait;
+
+    /// `Display` output must follow the `"name (id)"` format.
+    #[test]
+    fn display_format_is_name_paren_id() {
+        let device = AudioDevice {
+            id: "73".to_string(),
+            name: "MacBook Pro Speakers".to_string(),
+        };
+        assert_eq!(device.to_string(), "MacBook Pro Speakers (73)");
+    }
 
     // ── stub tests (no coreaudio feature) ────────────────────────────────────
     // These tests are only compiled and run when the `coreaudio` feature is
