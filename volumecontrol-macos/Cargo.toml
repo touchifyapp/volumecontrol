@@ -15,7 +15,8 @@ categories = ["multimedia::audio", "os"]
 
 [package.metadata.docs.rs]
 targets = ["x86_64-apple-darwin"]
-all-features = true
+all-features = false
+features = []
 
 [dependencies]
 volumecontrol-core = { workspace = true }
