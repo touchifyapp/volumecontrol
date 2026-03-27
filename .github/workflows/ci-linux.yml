@@ -24,6 +24,7 @@ name: CI – Linux (PulseAudio)
 
 on:
   push:
+    branches: ["main"]
     paths:
       - "volumecontrol-linux/**"
       - "volumecontrol-core/**"

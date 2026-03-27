@@ -16,6 +16,7 @@ name: Quality (fmt + audit)
 
 on:
   push:
+    branches: ["main"]
     paths:
       - "volumecontrol/**"
       - "volumecontrol-core/**"
