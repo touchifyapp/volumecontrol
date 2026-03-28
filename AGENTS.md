@@ -15,8 +15,9 @@ volumecontrol/                   ← workspace root
 ├── volumecontrol-linux/         ← PulseAudio (libpulse-binding) backend
 ├── volumecontrol-windows/       ← WASAPI (windows crate) backend
 ├── volumecontrol-macos/         ← CoreAudio (objc2-core-audio) backend
-└── volumecontrol/               ← cross-platform wrapper (re-exports the
-                                    correct backend for the current target)
+├── volumecontrol/               ← cross-platform wrapper (re-exports the
+│                                   correct backend for the current target)
+└── volumecontrol-napi/          ← Node.js bindings via napi-rs
 ```
 
 ---
@@ -30,6 +31,7 @@ volumecontrol/                   ← workspace root
 | `volumecontrol-windows` | `AudioDevice` impl using WASAPI; requires `wasapi` feature     |
 | `volumecontrol-macos`   | `AudioDevice` impl using CoreAudio; requires `coreaudio` feature |
 | `volumecontrol`         | Selects the right backend at compile time via `#[cfg(target_os)]` |
+| `volumecontrol-napi`    | Node.js native addon via napi-rs; wraps the `volumecontrol` crate |
 
 ---
 
@@ -140,6 +142,67 @@ To implement a backend:
 
 ---
 
+## napi-rs bindings — best practices
+
+### Project layout
+
+- The `volumecontrol-napi` crate lives at the workspace root alongside the other crates.
+- `Cargo.toml` sets `crate-type = ["cdylib"]` so the output is a loadable `.node` native addon.
+- `package.json` lives in the same directory and drives the `@napi-rs/cli` build pipeline.
+- `build.rs` calls `napi_build::setup()` — do not remove it.
+
+### Type mapping rules
+
+- napi-rs does **not** support `u8` / `i8` in `#[napi]` function signatures.  Use `u32` / `i32` and cast internally.
+- Rust structs exposed to JS must use `#[napi(object)]` for plain data objects (DTO/value objects) or `#[napi]` for opaque classes with methods.
+- Rust enums exposed to JS should use `#[napi(string_enum)]` when the variants carry no data.
+- `String` maps to JS `string`; `bool` maps to JS `boolean`; `Vec<T>` maps to JS `Array<T>`.
+- Return `napi::Result<T>` from every fallible function — JS receives a thrown `Error`.
+
+### Error handling
+
+- Convert `AudioError` → `napi::Error` via a helper: `fn to_napi_err(err: AudioError) -> napi::Error { napi::Error::from_reason(format!("{err}")) }`.
+- **Never panic.**  All `#[napi]` functions must return `napi::Result` or be infallible.
+- The workspace-wide rule "no `unwrap()` / `expect()`" applies equally to napi code.
+
+### Naming conventions
+
+- Rust `snake_case` methods become JS `camelCase` automatically (napi-rs convention).
+  - `from_default()` → `fromDefault()`
+  - `get_vol()` → `getVol()`
+  - `set_mute()` → `setMute()`
+- Factory constructors use `#[napi(factory)]`.
+- Property accessors use `#[napi(getter)]` (and `#[napi(setter)]` if mutable).
+- When the desired JS name conflicts with a Clippy lint (e.g. `to_string`), give the Rust method a distinct name and use `#[napi(js_name = "toString")]`; implement `fmt::Display` separately to satisfy the workspace rule.
+
+### Building & testing
+
+```bash
+# Build the native addon (release)
+cd volumecontrol-napi
+npm install
+npm run build
+
+# Build debug
+npm run build:debug
+
+# Run JS-side tests
+npm test
+```
+
+### TypeScript declarations
+
+- `napi build` auto-generates `index.d.ts` — do not hand-edit it.
+- Ship `index.d.ts` alongside `index.js` and the `.node` binary in the npm package.
+
+### Publishing
+
+- Use `napi prepublish` to package platform-specific binaries.
+- The `napi.triples` field in `package.json` controls which OS/arch combinations are built.
+- Prebuilt binaries avoid requiring end-users to have Rust installed.
+
+---
+
 ## Running the tools
 
 ```bash
@@ -154,6 +217,12 @@ cargo clippy --workspace --all-targets --all-features -- -D warnings
 
 # Format code
 cargo fmt --all
+
+# Build the napi Node.js addon
+cd volumecontrol-napi && npm install && npm run build && cd ..
+
+# Run JS-side tests for the napi addon
+cd volumecontrol-napi && npm test && cd ..
 ```
 
 ---

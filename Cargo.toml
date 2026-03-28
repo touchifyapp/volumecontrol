@@ -5,6 +5,7 @@ members = [
     "volumecontrol-windows",
     "volumecontrol-macos",
     "volumecontrol",
+    "volumecontrol-napi",
 ]
 resolver = "2"
 
@@ -19,6 +20,9 @@ rust-version = "1.85.0"
 [workspace.dependencies]
 volumecontrol-core = { path = "volumecontrol-core", version = "0.1.1" }
 thiserror = "2.0"
+napi = { version = "2", features = ["napi9"] }
+napi-derive = "2"
+napi-build = "2"
 
 # ── cross cross-compilation configuration ────────────────────────────────────
 #
