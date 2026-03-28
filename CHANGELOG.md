@@ -25,4 +25,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `volumecontrol-macos` crate with CoreAudio backend (`coreaudio` feature).
 - `volumecontrol` wrapper crate that auto-selects the correct backend at compile time.
 
-[Unreleased]: https://github.com/SomaticIT/volumecontrol/compare/HEAD...HEAD
+[Unreleased]: https://github.com/touchifyapp/volumecontrol/compare/HEAD...HEAD

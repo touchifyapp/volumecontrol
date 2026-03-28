@@ -2,8 +2,8 @@
 
 [![Crates.io](https://img.shields.io/crates/v/volumecontrol.svg)](https://crates.io/crates/volumecontrol)
 [![docs.rs](https://docs.rs/volumecontrol/badge.svg)](https://docs.rs/volumecontrol)
-[![CI](https://github.com/SomaticIT/volumecontrol/actions/workflows/ci-linux.yml/badge.svg)](https://github.com/SomaticIT/volumecontrol/actions)
-[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/SomaticIT/volumecontrol/blob/main/LICENSE)
+[![CI](https://github.com/touchifyapp/volumecontrol/actions/workflows/ci-linux.yml/badge.svg)](https://github.com/touchifyapp/volumecontrol/actions)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/touchifyapp/volumecontrol/blob/main/LICENSE)
 
 > A cross-platform Rust library for querying and controlling system audio volume.
 
@@ -269,8 +269,8 @@ See the [LICENSE](LICENSE) file for the full text.
 
 ## Contact / Further Information
 
-- **Issues & feature requests:** [GitHub Issues](https://github.com/SomaticIT/volumecontrol/issues)
-- **Pull requests:** [GitHub Pull Requests](https://github.com/SomaticIT/volumecontrol/pulls)
+- **Issues & feature requests:** [GitHub Issues](https://github.com/touchifyapp/volumecontrol/issues)
+- **Pull requests:** [GitHub Pull Requests](https://github.com/touchifyapp/volumecontrol/pulls)
 - **Maintainer:** [@SomaticIT](https://github.com/SomaticIT)
 
 If you have a question that is not suited for a public issue, you can reach the maintainer through their GitHub profile.
