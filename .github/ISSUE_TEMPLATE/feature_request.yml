@@ -1,0 +1,128 @@
+name: ✨ Feature Request
+description: Suggest a new feature or improvement
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for suggesting a feature! Structured context helps both
+        maintainers and AI coding agents understand and implement your idea.
+
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: One or two sentences describing the feature.
+      placeholder: "Add a get_device_list() method that returns device names alongside IDs."
+    validations:
+      required: true
+
+  - type: dropdown
+    id: crate
+    attributes:
+      label: Target crate(s)
+      description: Which crate(s) should this feature be added to?
+      multiple: true
+      options:
+        - volumecontrol (wrapper)
+        - volumecontrol-core
+        - volumecontrol-linux
+        - volumecontrol-windows
+        - volumecontrol-macos
+    validations:
+      required: true
+
+  - type: dropdown
+    id: platform
+    attributes:
+      label: Platform scope
+      description: Which platform(s) does this feature target?
+      multiple: true
+      options:
+        - All platforms
+        - Linux
+        - Windows
+        - macOS
+    validations:
+      required: true
+
+  - type: textarea
+    id: motivation
+    attributes:
+      label: Motivation & use case
+      description: |
+        Why is this feature needed? What problem does it solve?
+        Describe the use case from a user/developer perspective.
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposed-api
+    attributes:
+      label: Proposed API or behavior
+      description: |
+        How should this feature look from the caller's perspective?
+        Include Rust code showing the desired API if possible.
+      placeholder: |
+        ```rust
+        use volumecontrol::AudioDevice;
+
+        // Proposed: volume change callback
+        device.on_volume_change(|vol| {
+            println!("Volume changed to {vol}%");
+        })?;
+        ```
+    validations:
+      required: true
+
+  - type: textarea
+    id: acceptance-criteria
+    attributes:
+      label: Acceptance criteria
+      description: |
+        List the concrete conditions that must be true for this feature
+        to be considered complete. Use checkboxes.
+      placeholder: |
+        - [ ] New method added to `AudioDevice` trait in `volumecontrol-core`
+        - [ ] Implemented for Linux (PulseAudio) backend
+        - [ ] Implemented for Windows (WASAPI) backend
+        - [ ] Implemented for macOS (CoreAudio) backend
+        - [ ] Unit tests added for each platform
+        - [ ] Documentation updated with usage example
+    validations:
+      required: true
+
+  - type: textarea
+    id: implementation-hints
+    attributes:
+      label: Implementation hints
+      description: |
+        Optional: point to specific files, types, or platform APIs that
+        are relevant. This helps AI agents navigate the codebase.
+      placeholder: |
+        - The `AudioDevice` trait is defined in `volumecontrol-core/src/traits.rs`
+        - PulseAudio: look at `pa_context_subscribe` for change notifications
+        - WASAPI: `IAudioEndpointVolumeCallback` interface
+    validations:
+      required: false
+
+  - type: dropdown
+    id: breaking
+    attributes:
+      label: Breaking change?
+      description: Would this require a breaking change to the public API?
+      options:
+        - "No"
+        - "Yes — new trait method (requires major version bump)"
+        - "Yes — changed existing method signature"
+        - "Not sure"
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Any other approaches you've thought about and why they're less ideal.
+    validations:
+      required: false
