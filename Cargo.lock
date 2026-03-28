@@ -148,7 +148,7 @@ checksum = "e6e4313cd5fcd3dad5cafa179702e2b244f760991f45397d14d4ebf38247da75"
 
 [[package]]
 name = "volumecontrol"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "volumecontrol-core",
  "volumecontrol-linux",
@@ -158,14 +158,14 @@ dependencies = [
 
 [[package]]
 name = "volumecontrol-core"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "thiserror",
 ]
 
 [[package]]
 name = "volumecontrol-linux"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "libpulse-binding",
  "volumecontrol-core",
@@ -173,7 +173,7 @@ dependencies = [
 
 [[package]]
 name = "volumecontrol-macos"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "objc2-core-audio",
  "objc2-core-foundation",
@@ -182,7 +182,7 @@ dependencies = [
 
 [[package]]
 name = "volumecontrol-windows"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "thiserror",
  "volumecontrol-core",

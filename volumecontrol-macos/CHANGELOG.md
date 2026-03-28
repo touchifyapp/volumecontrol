@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.1](https://github.com/touchifyapp/volumecontrol/compare/volumecontrol-macos-v0.1.0...volumecontrol-macos-v0.1.1) - 2026-03-28
+
+### Fixed
+
+- *(macos)* filter AudioDevice::list() to output devices only ([#51](https://github.com/touchifyapp/volumecontrol/pull/51))
+
+### Other
+
+- add "Built with AI" notice to all README files ([#48](https://github.com/touchifyapp/volumecontrol/pull/48))
+- release v0.1.0 ([#43](https://github.com/touchifyapp/volumecontrol/pull/43))
+
 ## [0.1.0](https://github.com/touchifyapp/volumecontrol/releases/tag/volumecontrol-macos-v0.1.0) - 2026-03-28
 
 ### Added
