@@ -1,0 +1,111 @@
+name: 🐛 Bug Report
+description: Report a bug in the volumecontrol workspace
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting a bug! Please fill out the sections below so we
+        (or an AI coding agent) can reproduce and fix the issue quickly.
+
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: One or two sentences describing the bug.
+      placeholder: "AudioDevice::from_default() panics on Linux when no PulseAudio server is running."
+    validations:
+      required: true
+
+  - type: dropdown
+    id: crate
+    attributes:
+      label: Affected crate(s)
+      description: Which crate(s) are affected?
+      multiple: true
+      options:
+        - volumecontrol (wrapper)
+        - volumecontrol-core
+        - volumecontrol-linux
+        - volumecontrol-windows
+        - volumecontrol-macos
+    validations:
+      required: true
+
+  - type: dropdown
+    id: platform
+    attributes:
+      label: Platform
+      description: On which platform(s) does this occur?
+      multiple: true
+      options:
+        - Linux
+        - Windows
+        - macOS
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to reproduce
+      description: |
+        Minimal steps or code snippet to trigger the bug.
+        Include a short Rust example if possible.
+      placeholder: |
+        ```rust
+        use volumecontrol::AudioDevice;
+
+        fn main() {
+            let device = AudioDevice::from_default().unwrap();
+            device.set_vol(50).unwrap(); // panics here
+        }
+        ```
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+      description: What should have happened?
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+      description: What happened instead? Include error messages or stack traces if available.
+      placeholder: |
+        ```
+        thread 'main' panicked at 'called `Result::unwrap()` on an `Err` value: ...'
+        ```
+    validations:
+      required: true
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: |
+        Relevant environment details. Copy-paste and fill in:
+      value: |
+        - **OS & version**: e.g. Ubuntu 24.04 / Windows 11 23H2 / macOS 15.2
+        - **Rust toolchain**: e.g. stable 1.85.0
+        - **Crate version**: e.g. 0.1.0 (or commit SHA)
+        - **Audio backend**: e.g. PulseAudio 16.1 / WASAPI / CoreAudio
+    validations:
+      required: true
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional context
+      description: |
+        Any extra info that helps understand the issue:
+        - Relevant logs or `RUST_BACKTRACE=1` output
+        - Related issues or PRs
+        - Workarounds you've tried
+    validations:
+      required: false
