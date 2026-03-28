@@ -208,13 +208,13 @@ The `volumecontrol-napi` package exposes the same cross-platform API to Node.js 
 ### Installation
 
 ```bash
-npm install @volumecontrol/napi
+npm install @touchifyapp/volumecontrol
 ```
 
 ### Usage
 
 ```js
-const { AudioDevice } = require('@volumecontrol/napi');
+const { AudioDevice } = require('@touchifyapp/volumecontrol');
 
 const device = AudioDevice.fromDefault();
 console.log(`${device.name} (${device.id})`);

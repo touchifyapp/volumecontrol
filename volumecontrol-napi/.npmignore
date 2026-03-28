@@ -3,3 +3,4 @@ src/
 Cargo.toml
 build.rs
 .cargo/
+__test__/

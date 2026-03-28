@@ -32,7 +32,7 @@ fn to_napi_err(err: AudioError) -> napi::Error {
 ///
 /// Mirrors [`volumecontrol_core::DeviceInfo`].  Exposed to JS as a plain
 /// object with `id` and `name` string properties.
-#[napi(object)]
+#[napi(object, js_name = "DeviceInfo")]
 pub struct JsDeviceInfo {
     /// Platform-specific unique identifier for the device.
     ///
@@ -54,7 +54,7 @@ pub struct JsDeviceInfo {
 /// Wraps [`volumecontrol::AudioDevice`] and exposes its API to Node.js.
 /// All fallible methods return `napi::Result<T>`, which causes the JS side
 /// to receive a thrown `Error` on failure.
-#[napi]
+#[napi(js_name = "AudioDevice")]
 pub struct JsAudioDevice {
     inner: AudioDevice,
 }

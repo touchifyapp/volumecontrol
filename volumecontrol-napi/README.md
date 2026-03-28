@@ -9,7 +9,7 @@ This package exposes the cross-platform audio volume control API to Node.js as a
 ## Installation
 
 ```bash
-npm install @volumecontrol/napi
+npm install @touchifyapp/volumecontrol
 ```
 
 > **Platform requirements**
@@ -22,7 +22,7 @@ npm install @volumecontrol/napi
 ## Usage
 
 ```js
-const { AudioDevice } = require('@volumecontrol/napi');
+const { AudioDevice } = require('@touchifyapp/volumecontrol');
 
 // Open the default audio output device
 const device = AudioDevice.fromDefault();
