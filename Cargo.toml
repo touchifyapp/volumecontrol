@@ -17,7 +17,7 @@ authors = ["SomaticIT <github@somatic.it>"]
 rust-version = "1.85.0"
 
 [workspace.dependencies]
-volumecontrol-core = { path = "volumecontrol-core", version = "0.1.0" }
+volumecontrol-core = { path = "volumecontrol-core", version = "0.1.1" }
 thiserror = "2.0"
 
 # ── cross cross-compilation configuration ────────────────────────────────────
