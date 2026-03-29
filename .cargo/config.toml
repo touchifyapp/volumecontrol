@@ -4,14 +4,15 @@
 # the linker inside the cross Docker container needs to know where to find
 # `libpulse.so.0` for the target architecture.
 #
-# The `pre-build` steps in `[workspace.metadata.cross.target.*]` install
-# `libpulse-dev:<arch>` into the container at its standard multi-arch path
-# (e.g. /usr/lib/aarch64-linux-gnu/libpulse.so.0).  We add that directory to
-# the linker search path via target-specific `rustflags` here.
+# The `pre-build` steps in `Cross.toml` install `libpulse-dev:<arch>` into
+# the container at its standard multi-arch path (e.g.
+# /usr/lib/aarch64-linux-gnu/libpulse.so.0).  We add that directory to the
+# linker search path via target-specific `rustflags` here as an extra safety
+# measure — when `libpulse-sys`'s pkg-config probe succeeds it already emits
+# the correct `-L`, but this ensures the path is always present.
 #
 # This file is mounted inside the cross container alongside the rest of the
-# workspace, so Cargo inside the container reads it directly — no dependency
-# on cross's `env.set` metadata (which is unreliable when invoked via napi CLI).
+# workspace, so Cargo inside the container reads it directly.
 
 [target.aarch64-unknown-linux-gnu]
 rustflags = ["-L", "/usr/lib/aarch64-linux-gnu"]
