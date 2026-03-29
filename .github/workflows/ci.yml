@@ -166,6 +166,8 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: lts/*
+          cache: npm
+          cache-dependency-path: volumecontrol-napi/package-lock.json
       - name: npm install (volumecontrol-napi)
         working-directory: volumecontrol-napi
         run: npm install
@@ -286,12 +288,21 @@ jobs:
           cross build
           -p volumecontrol
           --target ${{ matrix.target }}
+      - name: Setup Node.js
+        if: matrix.can_build
+        uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+          cache: npm
+          cache-dependency-path: volumecontrol-napi/package-lock.json
+      - name: npm install (volumecontrol-napi)
+        if: matrix.can_build
+        working-directory: volumecontrol-napi
+        run: npm install
       - name: cross build volumecontrol-napi
         if: matrix.can_build
-        run: >
-          cross build
-          -p volumecontrol-napi
-          --target ${{ matrix.target }}
+        working-directory: volumecontrol-napi
+        run: npx napi build --platform --target ${{ matrix.target }} --release --use-cross
 
   # ── Windows CI (only if windows paths changed) ───────────────────────
   windows:
@@ -413,6 +424,8 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: lts/*
+          cache: npm
+          cache-dependency-path: volumecontrol-napi/package-lock.json
       - name: npm install (volumecontrol-napi)
         working-directory: volumecontrol-napi
         run: npm install
@@ -518,6 +531,8 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: lts/*
+          cache: npm
+          cache-dependency-path: volumecontrol-napi/package-lock.json
       - name: npm install (volumecontrol-napi)
         working-directory: volumecontrol-napi
         run: npm install
