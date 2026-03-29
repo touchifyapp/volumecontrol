@@ -17,6 +17,7 @@
 - [Getting Started](#getting-started)
 - [Installation](#installation)
 - [Usage](#usage)
+- [Node.js Bindings](#nodejs-bindings)
 - [How to Collaborate](#how-to-collaborate)
 - [License](#license)
 - [Contact / Further Information](#contact--further-information)
@@ -43,8 +44,12 @@ volumecontrol/                   ← workspace root
 ├── volumecontrol-windows/       ← WASAPI backend       (feature: wasapi)
 ├── volumecontrol-macos/         ← CoreAudio backend    (feature: coreaudio)
 │
-└── volumecontrol/               ← cross-platform wrapper crate
-    └── src/lib.rs               ← selects the right backend via #[cfg(target_os)]
+├── volumecontrol/               ← cross-platform wrapper crate
+│   └── src/lib.rs               ← selects the right backend via #[cfg(target_os)]
+│
+└── volumecontrol-napi/          ← Node.js bindings via napi-rs
+    ├── src/lib.rs               ← #[napi] annotated Rust ↔ JS bridge
+    └── package.json             ← npm package configuration
 ```
 
 | Crate                   | Purpose                                                        |
@@ -54,6 +59,7 @@ volumecontrol/                   ← workspace root
 | `volumecontrol-windows` | `AudioDevice` impl using WASAPI                                |
 | `volumecontrol-macos`   | `AudioDevice` impl using CoreAudio                             |
 | `volumecontrol`         | Selects the right backend at compile time via `#[cfg(target_os)]` |
+| `volumecontrol-napi`    | Node.js native addon via napi-rs; wraps `volumecontrol`        |
 
 ---
 
@@ -192,6 +198,42 @@ All methods return `Result<_, AudioError>`. The error variants are:
 | `SetMuteFailed`          | Could not change the mute state              |
 | `Unsupported`            | Operation not supported on this platform     |
 | `EndpointLockPoisoned`   | A thread panicked while holding the audio endpoint lock (Windows) |
+
+---
+
+## Node.js Bindings
+
+The `volumecontrol-napi` package exposes the same cross-platform API to Node.js as a native addon powered by [napi-rs](https://napi.rs). The correct system backend (PulseAudio, WASAPI, or CoreAudio) is selected automatically at compile time.
+
+### Installation
+
+```bash
+npm install @touchifyapp/volumecontrol
+```
+
+### Usage
+
+```js
+const { AudioDevice } = require('@touchifyapp/volumecontrol');
+
+const device = AudioDevice.fromDefault();
+console.log(`${device.name} (${device.id})`);
+console.log(`Volume: ${device.getVol()}%`);
+
+device.setVol(50);
+console.log(`Muted: ${device.isMute()}`);
+
+const devices = AudioDevice.list();
+devices.forEach(d => console.log(`${d.name} (${d.id})`));
+```
+
+### Platform requirements
+
+- Node.js >= 18
+- Linux: `libpulse-dev` (PulseAudio development headers) — same requirement as the Rust crate
+- Windows / macOS: no extra system libraries required
+
+For full details, building from source, and the complete API reference, see [`volumecontrol-napi/README.md`](volumecontrol-napi/README.md).
 
 ---
 
