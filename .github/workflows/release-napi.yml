@@ -85,7 +85,7 @@ jobs:
           cache-dependency-path: volumecontrol-napi/package-lock.json
 
       - name: Install Rust (${{ matrix.target }})
-        uses: dtolnay/rust-toolchain@stable
+        uses: dtolnay/rust-toolchain@1.85.0
         with:
           targets: ${{ matrix.target }}
 
@@ -135,6 +135,9 @@ jobs:
       id-token: write
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: true
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -192,8 +195,7 @@ jobs:
         if: github.event_name == 'push'
         working-directory: volumecontrol-napi
         run: |
-          TAG="${{ github.ref_name }}"
-          VERSION="${TAG#volumecontrol-napi-v}"
+          VERSION="${{ needs.prepare.outputs.version }}"
           if [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
             npm publish --access public
           elif [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+ ]]; then
@@ -202,19 +204,20 @@ jobs:
             echo "Not a release, skipping publish"
           fi
 
-      - name: Update Cargo.toml version
-        if: github.event_name == 'push' && needs.prepare.outputs.version != ''
-        working-directory: volumecontrol-napi
-        run: |
-          VERSION="${{ needs.prepare.outputs.version }}"
-          sed -i "s/^version = \"[^\"]*\"/version = \"${VERSION}\"/" Cargo.toml
-
       - name: Push version update
         if: github.event_name == 'push' && needs.prepare.outputs.version != ''
         run: |
           BRANCH="${{ github.event.repository.default_branch }}"
+          VERSION="${{ needs.prepare.outputs.version }}"
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          # Ensure we push onto the current branch tip (not the detached tag HEAD).
+          # This job runs on ubuntu-latest so `sed -i` needs no backup extension.
+          git fetch origin "$BRANCH"
+          git checkout -B ci-version-bump "origin/$BRANCH"
+          # Re-apply the version bumps on top of the branch tip
+          npm version "$VERSION" --no-git-tag-version --prefix volumecontrol-napi
+          sed -i "s/^version = \"[^\"]*\"/version = \"$VERSION\"/" volumecontrol-napi/Cargo.toml
           git add volumecontrol-napi/package.json volumecontrol-napi/Cargo.toml
-          git diff --staged --quiet || git commit -m "chore(napi): bump package version to ${{ needs.prepare.outputs.version }} [skip ci]"
-          git push origin HEAD:"$BRANCH"
+          git diff --staged --quiet || git commit -m "chore(napi): bump package version to $VERSION [skip ci]"
+          git push origin "ci-version-bump:$BRANCH"
