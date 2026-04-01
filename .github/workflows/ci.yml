@@ -8,7 +8,7 @@ on:
       # recorded on those commits and branch-protection requirements are met.
       # PRs opened by the default GITHUB_TOKEN do not fire pull_request events,
       # so this push trigger is the reliable way to run CI for release-plz PRs.
-      - "release-plz--*"
+      - "release-plz-*"
   pull_request:
   # No path filters — always triggers so branch protection is never blocked
 
