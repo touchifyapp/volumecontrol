@@ -1,4 +1,5 @@
-# Triggered when release-plz creates a volumecontrol-napi-vX.Y.Z tag.
+# Triggered when release-plz creates a volumecontrol-napi-vX.Y.Z tag,
+# or manually to build and inspect artifacts without publishing.
 #
 # Builds native .node binaries for every napi target, then publishes
 # @touchifyapp/volumecontrol (and its per-platform packages) to npm.
@@ -9,6 +10,7 @@ on:
   push:
     tags:
       - 'volumecontrol-napi-v*'
+  workflow_dispatch:
 
 env:
   CARGO_TERM_COLOR: always
@@ -17,10 +19,54 @@ permissions:
   contents: read
 
 jobs:
+  # ── Prepare: extract version from tag and sync package files ─────────────
+  prepare:
+    name: Prepare release
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Extract version from tag
+        id: version
+        if: github.event_name == 'push'
+        run: |
+          TAG="${{ github.ref_name }}"
+          VERSION="${TAG#volumecontrol-napi-v}"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Update package.json version
+        if: steps.version.outputs.version != ''
+        working-directory: volumecontrol-napi
+        run: npm version "${{ steps.version.outputs.version }}" --no-git-tag-version
+
+      - name: Update Cargo.toml version
+        if: steps.version.outputs.version != ''
+        working-directory: volumecontrol-napi
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          sed -i "s/^version = \"[^\"]*\"/version = \"${VERSION}\"/" Cargo.toml
+
+      - name: Push version update
+        if: steps.version.outputs.version != ''
+        run: |
+          BRANCH="${{ github.event.repository.default_branch }}"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add volumecontrol-napi/package.json volumecontrol-napi/Cargo.toml
+          git diff --staged --quiet || git commit -m "chore(napi): bump package version to ${{ steps.version.outputs.version }} [skip ci]"
+          git push origin HEAD:"$BRANCH"
+
   # ── Build .node binaries for every target ────────────────────────────────
   build:
     name: Build ${{ matrix.target }}
     runs-on: ${{ matrix.runner }}
+    needs: prepare
     strategy:
       fail-fast: false
       matrix:
@@ -81,6 +127,11 @@ jobs:
         working-directory: volumecontrol-napi
         run: npm install
 
+      - name: Update package.json version
+        if: needs.prepare.outputs.version != ''
+        working-directory: volumecontrol-napi
+        run: npm version "${{ needs.prepare.outputs.version }}" --no-git-tag-version
+
       - name: Build (using cross)
         if: ${{ matrix.use_cross }}
         working-directory: volumecontrol-napi
@@ -102,9 +153,10 @@ jobs:
   publish:
     name: Publish to npm
     runs-on: ubuntu-latest
-    needs: build
+    needs: [prepare, build]
     permissions:
-      contents: read
+      contents: write
+      id-token: write
     steps:
       - uses: actions/checkout@v4
 
@@ -120,6 +172,11 @@ jobs:
         working-directory: volumecontrol-napi
         run: npm install
 
+      - name: Update package.json version
+        if: needs.prepare.outputs.version != ''
+        working-directory: volumecontrol-napi
+        run: npm version "${{ needs.prepare.outputs.version }}" --no-git-tag-version
+
       - name: Download all binary artifacts
         uses: actions/download-artifact@v4
         with:
@@ -127,24 +184,27 @@ jobs:
 
       - name: Move .node files into package directory
         working-directory: volumecontrol-napi
-        run: npx napi artifacts --input ./artifacts --output .
+        # napi artifacts defaults: input=./artifacts, output=current directory
+        run: npx napi artifacts
 
-      - name: Generate per-platform npm packages
+      - name: List packages
         working-directory: volumecontrol-napi
-        run: npx napi prepublish -t npm
-
-      - name: Publish platform packages
-        working-directory: volumecontrol-napi
-        run: |
-          set -e
-          for dir in npm/@*/*/; do
-            npm publish "$dir" --access public
-          done
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: ls -R ./npm
 
       - name: Publish main package
+        if: github.event_name != 'workflow_dispatch'
         working-directory: volumecontrol-napi
-        run: npm publish --access public
+        run: |
+          npm config set provenance true
+          if echo "${{ github.ref }}" | grep -qE "refs/tags/volumecontrol-napi-v[0-9]+\.[0-9]+\.[0-9]+$"; then
+            echo "//registry.npmjs.org/:_authToken=$NPM_TOKEN" >> ~/.npmrc
+            npm publish --access public
+          elif echo "${{ github.ref }}" | grep -qE "refs/tags/volumecontrol-napi-v[0-9]+\.[0-9]+\.[0-9]+"; then
+            echo "//registry.npmjs.org/:_authToken=$NPM_TOKEN" >> ~/.npmrc
+            npm publish --tag next --access public
+          else
+            echo "Not a release, skipping publish"
+          fi
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
