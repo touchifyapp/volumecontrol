@@ -201,8 +201,6 @@ jobs:
           else
             echo "Not a release, skipping publish"
           fi
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Update Cargo.toml version
         if: github.event_name == 'push' && needs.prepare.outputs.version != ''
