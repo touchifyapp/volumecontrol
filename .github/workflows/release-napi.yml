@@ -191,7 +191,15 @@ jobs:
         working-directory: volumecontrol-napi
         run: ls -R ./npm
 
-      - name: Publish platform packages to GitHub Release
+      - name: Configure npm authentication
+        if: github.event_name == 'push'
+        run: |
+          npm config set provenance true
+          echo "//registry.npmjs.org/:_authToken=$NPM_TOKEN" >> ~/.npmrc
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Publish platform packages
         if: github.event_name == 'push'
         working-directory: volumecontrol-napi
         run: |
@@ -200,7 +208,7 @@ jobs:
             echo "::error::Could not find GitHub release for tag ${{ github.ref_name }}"
             exit 1
           fi
-          npx napi prepublish -t npm --gh-release-id "$RELEASE_ID"
+          npx napi prepublish -t npm --gh-release-id "$RELEASE_ID" --tag-style npm
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -208,18 +216,14 @@ jobs:
         if: github.event_name == 'push'
         working-directory: volumecontrol-napi
         run: |
-          npm config set provenance true
           TAG="${{ github.ref_name }}"
           VERSION="${TAG#volumecontrol-napi-v}"
           if [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-            echo "//registry.npmjs.org/:_authToken=$NPM_TOKEN" >> ~/.npmrc
             npm publish --access public
           elif [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+ ]]; then
-            echo "//registry.npmjs.org/:_authToken=$NPM_TOKEN" >> ~/.npmrc
             npm publish --tag next --access public
           else
             echo "Not a release, skipping publish"
           fi
         env:
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
