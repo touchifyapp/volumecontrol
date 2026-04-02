@@ -14,5 +14,5 @@ edition = "2021"
 license = "MIT"
 repository = "https://github.com/touchifyapp/volumecontrol"
 homepage = "https://github.com/touchifyapp/volumecontrol"
-authors = ["SomaticIT <github@somatic.it>"]
+authors = ["Maxime LUCE <maxime@touchify.io>"]
 rust-version = "1.88.0"
