@@ -66,6 +66,11 @@ jobs:
           private-key: ${{ secrets.PR_PRIVATE_KEY }}
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends \
+            libpulse-dev libasound2-dev
       - name: Run release-plz
         uses: release-plz/action@v0.5
         with:
