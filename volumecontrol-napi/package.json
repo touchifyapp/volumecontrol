@@ -2,12 +2,28 @@
   "name": "@touchifyapp/volumecontrol",
   "version": "0.1.0",
   "description": "Cross-platform system volume control for Node.js — powered by Rust and napi-rs",
+  "author": "Touchify <dev@touchify.io>",
+  "license": "MIT",
   "main": "index.js",
   "types": "index.d.ts",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/touchifyapp/volumecontrol",
+    "directory": "volumecontrol-napi"
+  },
+  "files": [
+    "index.js",
+    "index.d.ts",
+    "*.node"
+  ],
   "scripts": {
     "build": "napi build --platform --release",
     "build:debug": "napi build --platform",
     "test": "vitest run"
+  },
+  "devDependencies": {
+    "@napi-rs/cli": "^3",
+    "vitest": "^4"
   },
   "napi": {
     "binaryName": "volumecontrol",
@@ -21,19 +37,5 @@
       "aarch64-unknown-linux-gnu",
       "armv7-unknown-linux-gnueabihf"
     ]
-  },
-  "license": "MIT",
-  "devDependencies": {
-    "@napi-rs/cli": "^3",
-    "vitest": "^4"
-  },
-  "files": [
-    "index.js",
-    "index.d.ts",
-    "*.node"
-  ],
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/touchifyapp/volumecontrol"
   }
 }
