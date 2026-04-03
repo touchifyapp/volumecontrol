@@ -94,7 +94,7 @@ jobs:
           PR_NUMBER=${{ fromJSON(steps.release-plz.outputs.pr).number }}
 
           if [[ -n "$PR_NUMBER" ]]; then
-            VERSION=$(echo $PR | jq '.releases[] | select(.package_name == "volumecontrol-napi") | .version')
+            VERSION=$(echo $PR | jq -r '.releases[] | select(.package_name == "volumecontrol-napi") | .version')
 
             if [[ -z "$VERSION" ]]; then
               echo "No release found for volumecontrol-napi in the PR. Skipping."
