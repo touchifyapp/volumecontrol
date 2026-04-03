@@ -175,7 +175,7 @@ jobs:
           VERSION: ${{ steps.gh_release.outputs.version }}
         run: |
           npm config set provenance true
-          echo "//registry.npmjs.org/:_authToken=$NPM_TOKEN" >> ~/.npmrc
+          npm set "//registry.npmjs.org/:_authToken" $NPM_TOKEN
 
           if [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
             npm publish --access public
