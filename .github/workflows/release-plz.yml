@@ -63,7 +63,7 @@ jobs:
         uses: actions/checkout@v5
         with:
           fetch-depth: 0
-          persist-credentials: false
+          persist-credentials: true
       - uses: actions/create-github-app-token@v3
         id: app-token
         with:
@@ -91,10 +91,10 @@ jobs:
         run: |
           set -e
 
-          PR_NUMBER=${{ fromJSON(steps.release-plz.outputs.pr).number }}
+          PR_NUMBER=$(printf '%s' "${PR:-}" | jq -r 'if type == "object" then (.number // "") else "" end' 2>/dev/null || true)
 
           if [[ -n "$PR_NUMBER" ]]; then
-            VERSION=$(echo $PR | jq -r '.releases[] | select(.package_name == "volumecontrol-napi") | .version')
+            VERSION=$(printf '%s' "${PR:-}" | jq -r 'if type == "object" then ((.releases // [])[] | select(.package_name == "volumecontrol-napi") | .version) else empty end' 2>/dev/null || true)
 
             if [[ -z "$VERSION" ]]; then
               echo "No release found for volumecontrol-napi in the PR. Skipping."
@@ -105,5 +105,5 @@ jobs:
             cat volumecontrol-napi/package.json | jq '.version = "'$VERSION'"' | tee volumecontrol-napi/package.json
             git add .
             git commit --amend --no-edit
-            git push --force
+            git push --force-with-lease
           fi
