@@ -19,7 +19,8 @@
   "scripts": {
     "build": "napi build --platform --release",
     "build:debug": "napi build --platform",
-    "test": "vitest run"
+    "test": "vitest run",
+    "prepublishOnly": "napi prepublish -t npm --gh-release-id $RELEASE_ID --tag-style npm"
   },
   "devDependencies": {
     "@napi-rs/cli": "^3",
